@@ -1,0 +1,90 @@
+# YONVI production pilot: HTTPS Caddy + Fastify + private PostgreSQL.
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-yonvi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-yonvi}
+    volumes:
+      - yonvi_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    networks: [internal]
+
+  migrate:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.api
+    restart: "no"
+    command: ["node", "scripts/migrate-db.mjs"]
+    environment:
+      PGHOST: db
+      PGPORT: "5432"
+      PGUSER: ${POSTGRES_USER:-yonvi}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-yonvi}
+    depends_on:
+      db: {condition: service_healthy}
+    networks: [internal]
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      ALLOW_DEMO_AUTH: "false"
+      PORT: "3001"
+      PGHOST: db
+      PGPORT: "5432"
+      PGUSER: ${POSTGRES_USER:-yonvi}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-yonvi}
+      WEB_ORIGIN: https://${YONVI_DOMAIN:?Set YONVI_DOMAIN}
+      MAX_YONVI_TOKEN: ${MAX_YONVI_TOKEN:?Set MAX_YONVI_TOKEN}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_REGION: ${S3_REGION:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    expose: ["3001"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    networks: [internal]
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+    restart: unless-stopped
+    environment:
+      YONVI_DOMAIN: ${YONVI_DOMAIN:?Set YONVI_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - yonvi_caddy_data:/data
+      - yonvi_caddy_config:/config
+    depends_on:
+      api: {condition: service_healthy}
+    networks: [internal, public]
+
+networks:
+  internal:
+  public:
+
+volumes:
+  yonvi_pgdata:
+  yonvi_caddy_data:
+  yonvi_caddy_config:
