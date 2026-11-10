@@ -54,7 +54,7 @@ if not database and neon_secret:
     if found:
         project = found[0]
     elif os.environ.get('VERCEL_API_KEY'):
-        vercel_key = os.environ['VERCEL_API_KEY'].strip()
+        vercel_key = ''.join(os.environ['VERCEL_API_KEY'].split())
         request = urllib.request.Request(
             'https://api.vercel.com/v1/storage/stores/integration/direct?teamId=team_9LrMxYeoFRaedXiBxKFNoAL4',
             data=json.dumps({'name': 'yonvi', 'integrationConfigurationId': 'icfg_GwXL8m6i0D4bnfWJSQh2mwqp',
