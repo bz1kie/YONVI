@@ -33,7 +33,9 @@ app.get('/api/listings',async(req,reply)=>{
 app.get('/api/listings/:id',async(req,reply)=>{
   const id=(req.params as {id:string}).id;
   if(!z.string().uuid().safeParse(id).success)return reply.code(400).send({error:'Invalid id'});
-  const {rows}=await pool.query(`SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.created_at,u.nickname AS seller_name, media.photo_url FROM listings l JOIN users u ON u.id=l.seller_id
+  const {rows}=await pool.query(`SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.created_at,u.nickname AS seller_name, media.photo_url,
+  COALESCE((SELECT json_agg(json_build_object('id',im.id,'url','/api/media/' || im.id::text) ORDER BY im.sort_order,im.created_at)
+    FROM listing_media im WHERE im.listing_id=l.id AND im.upload_status='ready'),'[]'::json) AS images FROM listings l JOIN users u ON u.id=l.seller_id
   LEFT JOIN LATERAL (
     SELECT '/api/media/' || m.id::text AS photo_url
     FROM listing_media m WHERE m.listing_id=l.id AND m.upload_status='ready'
