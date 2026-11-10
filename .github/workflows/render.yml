@@ -1,0 +1,24 @@
+name: Deploy YONVI to Render Free
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/render.yml', 'deploy/**', 'apps/**', 'packages/**', 'scripts/deploy-render.py', 'scripts/migrate-db.mjs', 'package.json']
+permissions:
+  contents: read
+concurrency:
+  group: yonvi-render-free
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create or deploy free service
+        env:
+          RENDER_API_KEY: ${{ secrets.Render_key }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          MAX_YONVI_TOKEN: ${{ secrets.MAX_YONVI_TOKEN }}
+          RENDER_OWNER_ID: ${{ vars.RENDER_OWNER_ID }}
+        run: python3 scripts/deploy-render.py

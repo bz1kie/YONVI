@@ -1,0 +1,28 @@
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY package.json ./
+COPY apps/api/package.json ./apps/api/package.json
+COPY apps/web/package.json ./apps/web/package.json
+COPY packages/database/package.json ./packages/database/package.json
+COPY packages/shared/package.json ./packages/shared/package.json
+RUN npm install --no-audit --no-fund
+COPY apps ./apps
+COPY packages ./packages
+COPY scripts/migrate-db.mjs ./scripts/migrate-db.mjs
+RUN npm run build && npm prune --omit=dev --no-audit --no-fund
+
+FROM node:22-alpine
+RUN apk add --no-cache caddy
+ENV NODE_ENV=production ALLOW_DEMO_AUTH=false PORT=10000
+WORKDIR /app
+COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/apps/api/dist ./apps/api/dist
+COPY --from=build --chown=node:node /app/apps/api/package.json ./apps/api/package.json
+COPY --from=build --chown=node:node /app/apps/web/dist /srv
+COPY --from=build --chown=node:node /app/packages ./packages
+COPY --from=build --chown=node:node /app/scripts/migrate-db.mjs ./scripts/migrate-db.mjs
+COPY deploy/Caddyfile.render /etc/caddy/Caddyfile
+COPY deploy/start-render.mjs ./deploy/start-render.mjs
+USER node
+EXPOSE 10000
+CMD ["node", "deploy/start-render.mjs"]
