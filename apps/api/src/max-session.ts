@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Pool } from 'pg';
 import { createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';
-import { verifyMaxInitData, InvalidMaxData } from './max-auth.js';
+import { verifyMaxInitData, InvalidMaxData, configuredMaxBotToken } from './max-auth.js';
 
 const COOKIE='yorvi_session';
 const SESSION_SECONDS=12*3600;
@@ -49,7 +49,7 @@ export function registerMaxAuthentication(app:FastifyInstance,pool:Pool){
  app.post('/api/auth/max',async (req,reply)=>{
    const denied=requireOrigin(req,reply);
    if(denied)return denied;
-   const token=process.env.MAX_BOT_TOKEN;
+   const token=configuredMaxBotToken();
    if(!token)return reply.code(503).send({error:'MAX authentication is not configured'});
    const parsed=z.object({initData:z.string().min(20).max(16384)}).strict().safeParse(req.body);
    if(!parsed.success)return reply.code(400).send({error:'Invalid launch data'});
