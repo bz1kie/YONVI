@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import './server-workspace.css';
 
 const DEV_USER = '11111111-1111-4111-8111-111111111111';
@@ -14,6 +14,20 @@ const rub = (kopecks:string|number) => new Intl.NumberFormat('ru-RU',{style:'cur
 const statusText:Record<string,string> = {draft:'Черновик',active:'Опубликовано',reserved:'Резерв',sold:'Продано',archived:'Архив',approved:'Одобрено',pending:'На проверке',rejected:'Отклонено',removed:'Снято'};
 
 function errorText(e:unknown) { return e instanceof Error ? e.message : 'Неизвестная ошибка'; }
+function PhotoPreviews({files}:{files:File[]}){
+ const [urls,setUrls]=useState<string[]>([]);
+ useEffect(()=>{
+   const previews=files.map(f=>URL.createObjectURL(f));
+   setUrls(previews);
+   return ()=>previews.forEach(url=>URL.revokeObjectURL(url));
+ },[files]);
+ return files.length?<div className="sw-photo-previews">
+   {urls.map((url,i)=><div key={url} className="sw-photo-preview">
+     <img src={url} alt={'Предпросмотр '+(i+1)} loading="lazy"/>
+     <small>{i+1} / {files.length}</small>
+   </div>)}
+ </div>:null;
+}
 function uuidOrEmpty(s:string):boolean { return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s); }
 
 async function api<T>(path:string, user:string, init:RequestInit = {}, authenticated=false):Promise<T>{
@@ -62,6 +76,7 @@ export default function ServerWorkspace() {
  const [chosenCircles,setChosenCircles]=useState<string[]>([]);
  const [draft,setDraft]=useState<Draft>(startDraft);
  const [photoFiles,setPhotoFiles]=useState<File[]>([]);
+ const completedPhotos=useRef(0);
  const [uploadProgress,setUploadProgress]=useState('');
  const [pendingDraftId,setPendingDraftId]=useState<string|null>(null);
  const [photoListing,setPhotoListing]=useState<string>('');
@@ -120,15 +135,16 @@ export default function ServerWorkspace() {
       setPendingDraftId(listing.id);
     }
     if(!listingId)throw new Error('Объявление не найдено');
-    for(let i=0;i<photoFiles.length;i++){
+    for(let i=completedPhotos.current;i<photoFiles.length;i++){
       setUploadProgress(`Фото ${i+1} из ${photoFiles.length}`);
       await uploadPhoto(listingId,photoFiles[i]);
+      completedPhotos.current=i+1;
     }
     setUploadProgress('');
     if(!editId){
       await api(`/api/listings/${listingId}/submit`,user,{method:'POST',body:JSON.stringify({communityIds:chosenCircles})},Boolean(sessionUser));
     }
-    setDraft(startDraft);setEditId(null);setPhotoFiles([]);setPendingDraftId(null);
+    setDraft(startDraft);setEditId(null);setPhotoFiles([]);completedPhotos.current=0;setPendingDraftId(null);
   },editId?'Изменения сохранены. Публикация отправлена на повторную проверку.':'Объявление создано и отправлено модераторам.');
  }
  async function uploadPhoto(listingId:string, file:File){
@@ -146,16 +162,17 @@ export default function ServerWorkspace() {
  async function uploadExisting(){
   if(!photoFiles.length||!photoListing){notify('error','Выберите товар и фотографии');return;}
   await action(async()=>{
-    for(let i=0;i<photoFiles.length;i++){
+    for(let i=completedPhotos.current;i<photoFiles.length;i++){
       setUploadProgress(`Фото ${i+1} из ${photoFiles.length}`);
       await uploadPhoto(photoListing,photoFiles[i]);
+      completedPhotos.current=i+1;
     }
-    setUploadProgress('');setPhotoFiles([]);
+    setUploadProgress('');setPhotoFiles([]);completedPhotos.current=0;
   },'Фотографии загружены и отправлены на повторную модерацию.');
  }
  function edit(l:MyListing){
   if(l.status!=='draft'&&l.status!=='active')return;
-  setEditId(l.id);setPhotoFiles([]);setPendingDraftId(null);setDraft({title:l.title,description:l.description,price:String(Number(l.price_kopecks)/100),city:l.city,category:l.category});
+  setEditId(l.id);setPhotoFiles([]);completedPhotos.current=0;setPendingDraftId(null);setDraft({title:l.title,description:l.description,price:String(Number(l.price_kopecks)/100),city:l.city,category:l.category});
   window.scrollTo({top:0,behavior:'smooth'});
  }
  function toggleCircle(id:string){setChosenCircles(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id]);}
@@ -210,15 +227,16 @@ export default function ServerWorkspace() {
           if(files.length>10||files.some(f=>!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size<64||f.size>5*1024*1024)){
             notify('error','Выберите до 10 JPEG, PNG или WebP (до 5 МБ каждый).');e.target.value='';return;
           }
-          setPhotoFiles(files);
+          completedPhotos.current=0;setPhotoFiles(files);
         }}/>
+      <PhotoPreviews files={photoFiles}/>
       {photoFiles.length?<div className="sw-photo-chips">{photoFiles.map((file,i)=><span key={file.name+'-'+i}>{i+1}. {file.name}</span>)}</div>:null}
       <small>Файлы отправляются до публикации. При ошибке черновик останется в базе.</small>
     </div>
     {!editId&&<fieldset className="sw-circles"><legend>Разместить в кругах</legend>{communities.map(c=><label key={c.id}><input type="checkbox" checked={chosenCircles.includes(c.id)} onChange={()=>toggleCircle(c.id)}/><span>{c.name}</span><small>{c.city}</small></label>)}{!communities.length&&<p>Нет доступных кругов — запустите PostgreSQL и загрузите тестовые данные.</p>}</fieldset>}
     {uploadProgress?<p role="status" className="sw-upload-progress">Загружаем {uploadProgress}</p>:null}
     {pendingDraftId&&!editId?<p className="sw-upload-progress">Черновик сохранён. Повторная отправка не создаст дубликат.</p>:null}
-    <div className="sw-actions"><button className="sw-btn sw-primary" disabled={busy||loading||(!sessionUser&&!uuidOrEmpty(user))} type="submit">{busy?'Сохраняем…':editId?'Сохранить и проверить заново':'Создать и отправить'}</button>{editId&&<button className="sw-btn sw-secondary" type="button" onClick={()=>{setEditId(null);setPendingDraftId(null);setPhotoFiles([]);setDraft(startDraft);}}>Отмена</button>}</div>
+    <div className="sw-actions"><button className="sw-btn sw-primary" disabled={busy||loading||(!sessionUser&&!uuidOrEmpty(user))} type="submit">{busy?'Сохраняем…':editId?'Сохранить и проверить заново':'Создать и отправить'}</button>{editId&&<button className="sw-btn sw-secondary" type="button" onClick={()=>{setEditId(null);setPendingDraftId(null);setPhotoFiles([]);completedPhotos.current=0;setDraft(startDraft);}}>Отмена</button>}</div>
    </form>
    <div className="sw-panel">
     <div className="sw-panel-head"><h2>Мои объявления</h2><span>{loading?'Обновление…':mine.length+' записей'}</span></div>
