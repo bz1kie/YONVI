@@ -22,6 +22,10 @@ Next.js может быть добавлен **позже** для отдель�
 
 **Подготовка к production-пилоту 2.4:** `compose.production.yml` (Caddy HTTPS + Fastify + PostgreSQL), Dockerfile для веба и API, отдельный `scripts/migrate-db.mjs` без демоданных. Конфигурация требует внешнего VPS и домена: это **ещё не действующий публичный сайт**. [Инструкция для VPS](docs/PRODUCTION_VPS.md).
 
+## Бесплатный тест в Northflank
+
+Для тестового запуска подготовлены два Dockerfile для Northflank Sandbox (web + API) и один PostgreSQL addon: [пошаговая настройка Northflank](docs/NORTHFLANK_SANDBOX.md). Не загружайте боевой токен в GitHub-код и не публикуйте API наружу.
+
 ## Локальный запуск
 
 ```bash
