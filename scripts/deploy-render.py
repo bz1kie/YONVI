@@ -56,7 +56,6 @@ if not database and neon_secret:
     elif os.environ.get('VERCEL_API_KEY'):
         vercel_key = ''.join(os.environ['VERCEL_API_KEY'].split())
         for label, path in [
-            ('account', '/v2/user'),
             ('team integration', '/v1/integrations/configurations?view=account&teamId=team_9LrMxYeoFRaedXiBxKFNoAL4')]:
             probe = urllib.request.Request('https://api.vercel.com' + path,
                 headers={'Authorization': 'Bearer ' + vercel_key})
