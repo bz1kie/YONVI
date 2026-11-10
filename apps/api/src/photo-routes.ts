@@ -20,7 +20,7 @@ export function registerPhotoRoutes(app:FastifyInstance,pool:Pool,auth:Auth){
  // Never silently fall back to a public unauthenticated upload or mock credentials.
  const enabled=Boolean(bucket&&endpoint&&accessKeyId&&secretAccessKey);
  const client=enabled?new S3Client({
-   region,endpoint,forcePathStyle:true,credentials:{accessKeyId:accessKeyId!,secretAccessKey:secretAccessKey!},
+   region,endpoint,forcePathStyle:true,requestChecksumCalculation:'WHEN_REQUIRED',credentials:{accessKeyId:accessKeyId!,secretAccessKey:secretAccessKey!},
  }):null;
 
  app.post('/api/media/uploads',async(req,reply)=>{
