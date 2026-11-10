@@ -57,6 +57,10 @@ GitHub Actions выполняет те же ключевые проверки н
 
 [Продукт](docs/PRODUCT.md) · [Архитектура](docs/ARCHITECTURE.md) · [Бренд](docs/BRAND.md) · [Roadmap](docs/ROADMAP.md) · [MAX Auth](docs/MAX_AUTH.md) · [Фотографии](docs/PHOTOS.md) · [Галерея и локальный S3](docs/MINIO_GALLERY.md) · [Server API](docs/API_WRITES.md)
 
+## Канал и бот MAX
+
+Готовые название, описание и приветствие: [профиль YORI для MAX](docs/MAX_BOT_PROFILE_YORI.md).
+
 ## Переименование проекта
 
 Публичное имя продукта и маскота — **YORI / Йори**. Слоган — **«По лапкам — и по рукам! 🤝»**.
