@@ -1,11 +1,11 @@
-# YORVI 2.1 — MinIO и галерея товаров
+# YORVI 2.1 — S3-совместимое хранилище и галерея товаров
 
 ## Локальная инфраструктура
 
-В `docker-compose.yml` находятся PostgreSQL 17 и приватный MinIO. MinIO слушает **только localhost**:
+В `docker-compose.yml` находятся PostgreSQL 17 и локальный **SeaweedFS S3** (вместо недоступного публичного MinIO Docker-образа). S3 API слушает **только localhost**:
 
-- S3 endpoint `http://127.0.0.1:9000`
-- консоль `http://127.0.0.1:9001`
+- S3 endpoint `http://127.0.0.1:8333`
+- отдельной MinIO Console нет
 - test access key `yorvi_local_access`
 - test secret `yorvi_local_secret_change_before_deploy`
 - bucket `yorvi-private` (создаёт setup script)
@@ -17,11 +17,11 @@ npm install
 docker compose up -d
 export DATABASE_URL='postgresql://yorvi:yorvi_local_password@127.0.0.1:5432/yorvi'
 node scripts/prepare-db.mjs
-node scripts/setup-minio.mjs
+S3_ENDPOINT=http://127.0.0.1:8333 node scripts/setup-minio.mjs
 
 export NODE_ENV=development
 export ALLOW_DEMO_AUTH=true
-export S3_ENDPOINT='http://127.0.0.1:9000'
+export S3_ENDPOINT='http://127.0.0.1:8333'
 export S3_BUCKET=yorvi-private
 export S3_REGION=us-east-1
 export S3_ACCESS_KEY_ID=yorvi_local_access
@@ -45,7 +45,7 @@ npm run dev:api
 ### Что проверяет GitHub Actions
 
 После установки зависимостей и подготовки PostgreSQL:
-- `docker run ... minio/minio` запускает изолированное S3-совместимое хранилище;
+- `docker run ... chrislusf/seaweedfs` запускает изолированное S3-совместимое хранилище;
 - `node scripts/setup-minio.mjs` создаёт закрытый bucket;
 - `node scripts/integration-photo-minio-test.mjs` проверяет выдачу presigned PUT, загрузку объекта, подтверждение, ограничения доступа, публикацию после модерации, галерею, скрытие после продажи.
 
@@ -56,3 +56,5 @@ S3 тест подтверждает **базовый** цикл загрузк�
 ## Производственное окружение
 
 Для продакшена нужен **другой** закрытый S3 бакет и индивидуальные секреты только в backend env. Публичный endpoint подписанного PUT должен быть доступен браузеру через HTTPS; разрешите в CORS бакета только проверенные origin YORVI, PUT и необходимые headers. MinIO локального Compose не является production-хранилищем.
+
+**Примечание:** MinIO остаётся поддерживаемым вариантом для отдельного S3 endpoint, но его Docker-образ недоступен анонимно в окружении GitHub Actions (Docker Hub 404, Quay 401). Текущий автоматический тест выполняется на SeaweedFS, реальную совместимость с MinIO и выбранным production S3 нужно проверять отдельно.
