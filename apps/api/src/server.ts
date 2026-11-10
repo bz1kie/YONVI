@@ -65,6 +65,15 @@ app.post('/api/placements/:id/moderate',async(req,reply)=>{
   const client=await pool.connect();
   try{
     await client.query('BEGIN');
+    // Lock the listing before its placement, matching the edit lock order.
+    // Prevents approving obsolete content while the seller edits the listing.
+    const parent=await client.query(
+      `SELECT l.id,l.status FROM listings l
+       JOIN placements p ON p.listing_id=l.id
+       WHERE p.id=$1 FOR UPDATE OF l`,[id]
+    );
+    if(!parent.rows.length){await client.query('ROLLBACK');return reply.code(404).send({error:'Not found'});}
+    if(parent.rows[0].status!=='active'){await client.query('ROLLBACK');return reply.code(409).send({error:'Listing is not active'});}
     const item=await client.query(`SELECT p.id,p.status,r.role,c.owner_id FROM placements p
       JOIN communities c ON c.id=p.community_id
       LEFT JOIN community_roles r ON r.community_id=p.community_id AND r.user_id=$2 WHERE p.id=$1 FOR UPDATE OF p`,[id,userId]);
