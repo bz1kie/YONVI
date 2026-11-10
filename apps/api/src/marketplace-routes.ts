@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import type pg from 'pg';
+import type { Pool } from 'pg';
 import { z } from 'zod';
 
 type Auth = (request: unknown) => string | null;
@@ -18,7 +18,7 @@ const editSchema = z.object({
  * NODE_ENV !== production and ALLOW_DEMO_AUTH=true.
  * No server-side MAX signature verification exists yet.
  */
-export function registerMarketplaceRoutes(app: FastifyInstance, pool: pg.Pool, auth: Auth) {
+export function registerMarketplaceRoutes(app: FastifyInstance, pool: Pool, auth: Auth) {
   app.get('/api/me/listings', async (request, reply) => {
     const userId = auth(request);
     if (!userId) return reply.code(401).send({ error: 'Authentication required' });
