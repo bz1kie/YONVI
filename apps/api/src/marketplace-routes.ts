@@ -1,8 +1,8 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-type Auth = (request: unknown) => string | null;
+type Auth = (request: FastifyRequest) => string | null;
 const uuid = z.string().uuid();
 const submitSchema = z.object({
   communityIds: z.array(uuid).min(1).max(10).refine(ids => new Set(ids).size === ids.length, 'Duplicate communities'),
