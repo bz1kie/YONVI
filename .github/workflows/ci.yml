@@ -3,10 +3,31 @@ on: [push, pull_request]
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: yorvi
+          POSTGRES_PASSWORD: yorvi_local_password
+          POSTGRES_DB: yorvi
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U yorvi -d yorvi"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://yorvi:yorvi_local_password@127.0.0.1:5432/yorvi
+      ALLOW_DEMO_AUTH: 'false'
+      NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: {node-version: '22'}
+        with:
+          node-version: '22'
       - run: npm install
       - run: npm test
       - run: npm run build
+      - run: node scripts/prepare-db.mjs
+      - run: node scripts/integration-test.mjs
