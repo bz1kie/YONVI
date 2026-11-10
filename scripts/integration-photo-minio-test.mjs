@@ -54,6 +54,15 @@ try{
  assert.equal(ownerPhoto.status,200);
  assert.equal(ownerPhoto.headers.get('content-type'),'image/png');
  assert.deepEqual(Buffer.from(await ownerPhoto.arrayBuffer()),png);
+ // Second image verifies multi-photo sequencing and public gallery ordering.
+ const second=await call('/api/media/uploads',{method:'POST',body:{listingId:id,contentType:'image/png',size:png.length}});
+ assert.equal(second.status,200,JSON.stringify(second.data));
+ const secondPut=await fetch(second.data.uploadUrl,{method:'PUT',headers:second.data.headers,body:png});
+ assert.equal(secondPut.status,200,await secondPut.text());
+ const secondConfirm=await call('/api/media/'+second.data.mediaId+'/confirm',{method:'POST'});
+ assert.equal(secondConfirm.status,200,JSON.stringify(secondConfirm.data));
+ const ownerSecond=await fetch(root+'/api/media/'+second.data.mediaId,{headers:{'x-demo-user-id':userId}});
+ assert.equal(ownerSecond.status,200);
  const before=await fetch(root+'/api/media/'+start.data.mediaId);
  assert.equal(before.status,404,'Unapproved photo must not be public');
  const submit=await call('/api/listings/'+id+'/submit',{method:'POST',body:{communityIds:[circleId]}});
@@ -68,9 +77,12 @@ try{
  assert.equal(listing.status,200);
  assert.ok(Array.isArray(listing.data.images));
  assert.equal(listing.data.images[0].url,'/api/media/'+start.data.mediaId);
+ assert.equal(listing.data.images.length,2);
+ assert.equal(listing.data.images[1].url,'/api/media/'+second.data.mediaId);
  assert.equal((await call('/api/listings/'+id+'/sold',{method:'POST'})).status,200);
  assert.equal((await fetch(root+'/api/media/'+start.data.mediaId)).status,404);
- console.log('MinIO integration: presigned PUT, confirm, ownership, gallery, moderation and sold privacy passed');
+ assert.equal((await fetch(root+'/api/media/'+second.data.mediaId)).status,404);
+ console.log('S3 integration: two signed PUTs, confirm, ordered gallery, ownership, moderation, sold privacy passed');
 }finally{
  server.kill('SIGTERM');
  await pool.end();
