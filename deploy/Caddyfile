@@ -1,0 +1,17 @@
+{$YONVI_DOMAIN} {
+    encode zstd gzip
+    @backend path /api/* /health
+    handle @backend {
+        reverse_proxy api:3001
+    }
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
+    header {
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+}
