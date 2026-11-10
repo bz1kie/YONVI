@@ -55,6 +55,20 @@ if not database and neon_secret:
         project = found[0]
     elif os.environ.get('VERCEL_API_KEY'):
         vercel_key = ''.join(os.environ['VERCEL_API_KEY'].split())
+        for label, path in [
+            ('account', '/v2/user'),
+            ('team integration', '/v1/integrations/configurations?view=account&teamId=team_9LrMxYeoFRaedXiBxKFNoAL4')]:
+            probe = urllib.request.Request('https://api.vercel.com' + path,
+                headers={'Authorization': 'Bearer ' + vercel_key})
+            try:
+                with urllib.request.urlopen(probe, timeout=60) as response:
+                    # Do not print account data or integration responses.
+                    response.read()
+                    print('Vercel token access verified: ' + label)
+            except urllib.error.HTTPError as error:
+                fail(f'Vercel token cannot access {label}: HTTP {error.code}. No database creation attempted.')
+            except urllib.error.URLError:
+                fail('Vercel access preflight network error.')
         request = urllib.request.Request(
             'https://api.vercel.com/v1/storage/stores/integration/direct?teamId=team_9LrMxYeoFRaedXiBxKFNoAL4',
             data=json.dumps({'name': 'yonvi', 'integrationConfigurationId': 'icfg_GwXL8m6i0D4bnfWJSQh2mwqp',
