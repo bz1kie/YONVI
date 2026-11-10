@@ -14,7 +14,7 @@ const auth=(req:any):string|null=>{
   // FOR LOCAL DEVELOPMENT ONLY. Do NOT expose as production login. MAX HMAC verification is not implemented.
   if (process.env.NODE_ENV==='production' || process.env.ALLOW_DEMO_AUTH!=='true') return null;
   const id=req.headers['x-demo-user-id'];
-  return typeof id==='string' && /^[0-9a-f-]{36}$/i.test(id) ? id : null;
+  return typeof id==='string' && z.string().uuid().safeParse(id).success ? id : null;
 };
 app.get('/api/listings',async(req,reply)=>{
   const q=z.object({city:z.string().max(80).optional(),category:z.string().max(50).optional(),search:z.string().max(100).optional(),limit:z.coerce.number().int().min(1).max(50).default(20)}).safeParse(req.query);
