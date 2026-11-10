@@ -165,3 +165,5 @@ export default function ServerWorkspace() {
      </article>)}</div>:<div className="sw-empty">Очередь пуста или недоступна для выбранного пользователя.</div>}
   </div>}
  </section>;
+
+}
