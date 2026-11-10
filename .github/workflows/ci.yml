@@ -35,14 +35,19 @@ jobs:
       - run: node scripts/integration-test.mjs
       - run: node scripts/integration-write-test.mjs
       - run: node scripts/integration-max-auth-test.mjs
-      - name: Start isolated MinIO for photo integration
+      - name: Start isolated S3 storage for photo integration
         run: |
-          docker run -d --name yorvi-minio-ci \
-            -p 127.0.0.1:9000:9000 \
-            -e MINIO_ROOT_USER=yorvi_local_access \
-            -e MINIO_ROOT_PASSWORD=yorvi_local_secret_change_before_deploy \
-            quay.io/minio/minio:RELEASE.2025-02-07T23-21-09Z server /data --address ":9000"
+          docker run -d --name yorvi-s3-ci \
+            -p 127.0.0.1:8333:8333 \
+            -e AWS_ACCESS_KEY_ID=yorvi_local_access \
+            -e AWS_SECRET_ACCESS_KEY=yorvi_local_secret_change_before_deploy \
+            -e S3_BUCKET=yorvi-private \
+            chrislusf/seaweedfs:latest
       - name: Create private test photo bucket
         run: node scripts/setup-minio.mjs
+        env:
+          S3_ENDPOINT: http://127.0.0.1:8333
       - name: Verify signed upload, gallery and sold privacy
         run: node scripts/integration-photo-minio-test.mjs
+        env:
+          S3_ENDPOINT: http://127.0.0.1:8333
