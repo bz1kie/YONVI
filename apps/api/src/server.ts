@@ -4,18 +4,15 @@ import pg from 'pg';
 import { z } from 'zod';
 import { canModerate } from './domain.mjs';
 import { registerMarketplaceRoutes } from './marketplace-routes.js';
+import { registerMaxAuthentication, currentUserId } from './max-session.js';
 
 const app=Fastify({logger:true});
 const pool=new pg.Pool({connectionString:process.env.DATABASE_URL || 'postgresql://yorvi:yorvi_local_password@localhost:5432/yorvi'});
 await app.register(cors,{origin:process.env.WEB_ORIGIN || 'http://localhost:5173'});
 
 app.get('/health',async()=>({ok:true,service:'yorvi-api',version:'2.0.0-alpha.1'}));
-const auth=(req:any):string|null=>{
-  // FOR LOCAL DEVELOPMENT ONLY. Do NOT expose as production login. MAX HMAC verification is not implemented.
-  if (process.env.NODE_ENV==='production' || process.env.ALLOW_DEMO_AUTH!=='true') return null;
-  const id=req.headers['x-demo-user-id'];
-  return typeof id==='string' && z.string().uuid().safeParse(id).success ? id : null;
-};
+registerMaxAuthentication(app,pool);
+const auth=currentUserId;
 app.get('/api/listings',async(req,reply)=>{
   const q=z.object({city:z.string().max(80).optional(),category:z.string().max(50).optional(),search:z.string().max(100).optional(),limit:z.coerce.number().int().min(1).max(50).default(20)}).safeParse(req.query);
   if(!q.success)return reply.code(400).send({error:'Invalid query'});
@@ -36,7 +33,7 @@ app.get('/api/listings/:id',async(req,reply)=>{
 });
 const listingSchema=z.object({title:z.string().trim().min(3).max(120),description:z.string().max(5000).default(''),priceKopecks:z.number().int().nonnegative(),city:z.string().trim().min(1).max(80),category:z.string().min(1).max(50),requestKey:z.string().uuid()});
 app.post('/api/listings',async(req,reply)=>{
-  const userId=auth(req);if(!userId)return reply.code(401).send({error:'Demo auth required; production MAX auth not implemented'});
+  const userId=auth(req);if(!userId)return reply.code(401).send({error:'Authentication required'});
   const parsed=listingSchema.safeParse(req.body);if(!parsed.success)return reply.code(400).send({error:'Invalid listing',details:parsed.error.issues});
   const d=parsed.data;
   const {rows}=await pool.query(`INSERT INTO listings(seller_id,title,description,price_kopecks,city,category,status,create_request_key)
