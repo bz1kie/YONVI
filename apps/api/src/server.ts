@@ -38,7 +38,7 @@ app.get('/api/listings/:id',async(req,reply)=>{
     SELECT '/api/media/' || m.id::text AS photo_url
     FROM listing_media m WHERE m.listing_id=l.id AND m.upload_status='ready'
     ORDER BY m.sort_order,m.created_at LIMIT 1
-  ) media ON true WHERE l.id=$1 AND l.status=$2 AND EXISTS (SELECT 1 FROM placements p WHERE p.listing_id=l.id AND p.status='approved')",[id,'active']);
+  ) media ON true WHERE l.id=$1 AND l.status=$2 AND EXISTS (SELECT 1 FROM placements p WHERE p.listing_id=l.id AND p.status='approved')`,[id,'active']);
   if(!rows.length)return reply.code(404).send({error:'Not found'});
   return rows[0];
 });
