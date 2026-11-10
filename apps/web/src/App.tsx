@@ -150,23 +150,35 @@ class App extends React.Component<{},State> {
   }
   document.documentElement.setAttribute('data-theme',this.state.theme);
  }
- componentDidMount(){
-  document.addEventListener('keydown',this.onKeyDown);
-  document.documentElement.setAttribute('data-theme',this.state.theme);
-  const id=new URLSearchParams(window.location.search).get('listing');
-  if(id&&this.state.listings.some(l=>l.id===id))this.setState({selectedListing:id,page:'catalog'});
-  // Read-only integration: intentionally never sends demo user IDs or writes.
-  // If API is absent or empty, continue in explicitly labeled local demo mode.
+ refreshCatalog=()=>{
+  // All public listings come from PostgreSQL; dev seed stays explicitly local.
   fetchPublicListings().then(({items})=>{
-   if(!items.length){this.setState({listings:import.meta.env.DEV?this.state.listings:[],apiStatus:import.meta.env.DEV?'demo':'live',serverCount:0});return;}
+   if(!items.length){
+    this.setState({listings:import.meta.env.DEV?this.state.listings:[],apiStatus:import.meta.env.DEV?'demo':'live',serverCount:0,selectedListing:null,gallery:[],galleryIndex:0});
+    return;
+   }
    const remote:Listing[]=items.map((l:ServerListing)=>({id:l.id,title:l.title,description:l.description||'',price:Number(l.price_kopecks)/100,
     category:l.category,city:l.city,condition:'good',status:'active',deal:'sell',emoji:'📦',art:'art-blue',
     seller:l.seller_name||'Продавец',mine:false,views:0,createdAt:new Date(l.created_at).getTime()||Date.now(),
     placements:{global:'approved'},image:l.photo_url||undefined}));
-   this.setState({listings:remote,apiStatus:'live',serverCount:remote.length});
+   this.setState(state=>({
+     listings:remote,apiStatus:'live',serverCount:remote.length,
+     selectedListing:state.selectedListing&&remote.some(l=>l.id===state.selectedListing)?state.selectedListing:null
+   }));
   }).catch(()=>this.setState({listings:import.meta.env.DEV?this.state.listings:[],apiStatus:import.meta.env.DEV?'demo':'error',serverCount:0}));
+ };
+ componentDidMount(){
+  document.addEventListener('keydown',this.onKeyDown);
+  window.addEventListener('yorvi:catalog-change',this.refreshCatalog);
+  document.documentElement.setAttribute('data-theme',this.state.theme);
+  const id=new URLSearchParams(window.location.search).get('listing');
+  if(id&&this.state.listings.some(l=>l.id===id))this.setState({selectedListing:id,page:'catalog'});
+  this.refreshCatalog();
  }
- componentWillUnmount(){document.removeEventListener('keydown',this.onKeyDown);}
+ componentWillUnmount(){
+  document.removeEventListener('keydown',this.onKeyDown);
+  window.removeEventListener('yorvi:catalog-change',this.refreshCatalog);
+ }
  onKeyDown=(e:KeyboardEvent)=>{if(e.key==='Escape'&&(this.state.selectedListing||this.state.createOpen||this.state.helpOpen)){this.setState({selectedListing:null,createOpen:false,helpOpen:false});}};
  say(message:string){this.setState({toast:message});window.setTimeout(()=>{if(this.state.toast===message)this.setState({toast:''});},3200);}
  go(page:Page){const target=!import.meta.env.DEV&&(page==='my'||page==='moderation')?'server':page;this.setState({page:target,selectedListing:null,activeCircle:null,createOpen:false,filterOpen:false});window.scrollTo(0,0);}
