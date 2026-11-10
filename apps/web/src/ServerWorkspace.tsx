@@ -16,13 +16,14 @@ const statusText:Record<string,string> = {draft:'Черновик',active:'Оп�
 function errorText(e:unknown) { return e instanceof Error ? e.message : 'Неизвестная ошибка'; }
 function uuidOrEmpty(s:string):boolean { return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s); }
 
-async function api<T>(path:string, user:string, init:RequestInit = {}):Promise<T>{
+async function api<T>(path:string, user:string, init:RequestInit = {}, authenticated=false):Promise<T>{
  const response=await fetch(path,{
    ...init,
+   credentials:'same-origin',
    headers:{
      Accept:'application/json',
      ...(init.body?{'Content-Type':'application/json'}:{}),
-     ...(import.meta.env.DEV?{'x-demo-user-id':user}:{}),
+     ...(import.meta.env.DEV&&!authenticated?{'x-demo-user-id':user}:{}),
      ...init.headers,
    },
  });
@@ -37,6 +38,23 @@ async function api<T>(path:string, user:string, init:RequestInit = {}):Promise<T
 }
 export default function ServerWorkspace() {
  const [user,setUser]=useState(()=>{try{return localStorage.getItem(USER_STORAGE)||DEV_USER;}catch{return DEV_USER;}});
+ const [sessionUser,setSessionUser]=useState<{id:string;nickname:string}|null>(null);
+ const [authChecked,setAuthChecked]=useState(false);
+ const refreshAuth=useCallback(async()=>{
+   try {
+     const response=await fetch('/api/auth/me',{credentials:'same-origin',cache:'no-store'});
+     if(!response.ok){setSessionUser(null);return;}
+     const info=await response.json() as {user:{id:string;nickname:string}};
+     setSessionUser(info.user);
+   }catch{setSessionUser(null);}
+   finally{setAuthChecked(true);}
+ },[]);
+ useEffect(()=>{
+   void refreshAuth();
+   const onAuth=()=>{void refreshAuth();};
+   window.addEventListener('yorvi:auth-change',onAuth);
+   return ()=>window.removeEventListener('yorvi:auth-change',onAuth);
+ },[refreshAuth]);
  const [communities,setCommunities]=useState<Community[]>([]);
  const [mine,setMine]=useState<MyListing[]>([]);
  const [queue,setQueue]=useState<QueueItem[]>([]);
@@ -53,27 +71,27 @@ export default function ServerWorkspace() {
   setLoading(true);
   try{
    // Even when write auth is unavailable, public community lookup still works.
-   const cs=await api<{items:Community[]}>('/api/communities',user);
+   const cs=await api<{items:Community[]}>('/api/communities',user,{},Boolean(sessionUser));
    const available=cs.items||[];
    setCommunities(available);
    setSelectedCircle(previous=>available.some(c=>c.id===previous)?previous:available[0]?.id||'');
    setChosenCircles(previous=>previous.length?previous.filter(id=>available.some(c=>c.id===id)):available.length?[available[0].id]:[]);
-   const own=await api<{items:MyListing[]}>('/api/me/listings',user);
+   const own=await api<{items:MyListing[]}>('/api/me/listings',user,{},Boolean(sessionUser));
    setMine(own.items||[]);
    notify('info', 'Данные получены из PostgreSQL через Fastify.');
   }catch(error){notify('error',errorText(error));setMine([]);}
   finally{setLoading(false);}
- },[user]);
- useEffect(()=>{void fetchData();},[fetchData]);
+ },[user,sessionUser]);
+ useEffect(()=>{if(authChecked && (sessionUser||import.meta.env.DEV))void fetchData();},[fetchData,authChecked,sessionUser]);
  const fetchQueue=useCallback(async()=>{
    if(!selectedCircle)return;
-   try{const data=await api<{items:QueueItem[]}>(`/api/moderation/queue?communityId=${encodeURIComponent(selectedCircle)}`,user);setQueue(data.items||[]);}
+   try{const data=await api<{items:QueueItem[]}>(`/api/moderation/queue?communityId=${encodeURIComponent(selectedCircle)}`,user,{},Boolean(sessionUser));setQueue(data.items||[]);}
    catch(error){setQueue([]);notify('error',errorText(error));}
- },[selectedCircle,user]);
+ },[selectedCircle,user,sessionUser]);
  useEffect(()=>{if(tab==='moderation')void fetchQueue();},[tab,fetchQueue]);
  async function action(work:()=>Promise<void>,success:string){
   setBusy(true);
-  try {await work();notify('success',success);await fetchData();if(tab==='moderation')await fetchQueue();}
+  try {await work();await fetchData();if(tab==='moderation')await fetchQueue();notify('success',success);}
   catch(error){notify('error',errorText(error));}
   finally{setBusy(false);}
  }
@@ -85,12 +103,12 @@ export default function ServerWorkspace() {
   await action(async()=>{
     const values={title:draft.title.trim(),description:draft.description.trim(),priceKopecks:Math.round(price*100)};
     if(editId){
-      await api(`/api/listings/${editId}`,user,{method:'PATCH',body:JSON.stringify(values)});
+      await api(`/api/listings/${editId}`,user,{method:'PATCH',body:JSON.stringify(values)},Boolean(sessionUser));
     }else{
       const listing=await api<{id:string}>('/api/listings',user,{method:'POST',body:JSON.stringify({
         ...values,city:draft.city,category:draft.category,requestKey:crypto.randomUUID(),
-      })});
-      await api(`/api/listings/${listing.id}/submit`,user,{method:'POST',body:JSON.stringify({communityIds:chosenCircles})});
+      })},Boolean(sessionUser));
+      await api(`/api/listings/${listing.id}/submit`,user,{method:'POST',body:JSON.stringify({communityIds:chosenCircles})},Boolean(sessionUser));
     }
     setDraft(startDraft);setEditId(null);
   },editId?'Изменения сохранены. Публикация отправлена на повторную проверку.':'Объявление создано и отправлено модераторам.');
@@ -103,28 +121,32 @@ export default function ServerWorkspace() {
  function toggleCircle(id:string){setChosenCircles(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id]);}
  async function submit(l:MyListing){
   if(!chosenCircles.length){notify('error','Сначала выберите круги.');return;}
-  await action(async()=>{await api(`/api/listings/${l.id}/submit`,user,{method:'POST',body:JSON.stringify({communityIds:chosenCircles})});},'Запрос на размещение отправлен.');
+  await action(async()=>{await api(`/api/listings/${l.id}/submit`,user,{method:'POST',body:JSON.stringify({communityIds:chosenCircles})},Boolean(sessionUser));},'Запрос на размещение отправлен.');
  }
  async function sold(l:MyListing){
   if(!window.confirm('Отметить «Продано» во всех кругах?'))return;
-  await action(async()=>{await api(`/api/listings/${l.id}/sold`,user,{method:'POST'});},'Товар продан. Он скрыт из публичных витрин.');
+  await action(async()=>{await api(`/api/listings/${l.id}/sold`,user,{method:'POST'},Boolean(sessionUser));},'Товар продан. Он скрыт из публичных витрин.');
  }
  async function moderate(item:QueueItem,decision:'approved'|'rejected'){
-  await action(async()=>{await api(`/api/placements/${item.placement_id}/moderate`,user,{method:'POST',body:JSON.stringify({decision})});},decision==='approved'?'Объявление одобрено':'Объявление отклонено');
+  await action(async()=>{await api(`/api/placements/${item.placement_id}/moderate`,user,{method:'POST',body:JSON.stringify({decision})},Boolean(sessionUser));},decision==='approved'?'Объявление одобрено':'Объявление отклонено');
  }
  const field=(key:keyof Draft,value:string)=>setDraft(prev=>({...prev,[key]:value}));
  return <section className="server-workspace">
   <div className="sw-heading">
-   <div><span className="sw-kicker">YORVI 2.0 · БАЗА ДАННЫХ</span><h1>Серверная мастерская<span>.</span></h1>
-     <p>Реальный PostgreSQL через Fastify — без подмены данных из localStorage.</p></div>
+   <div><span className="sw-kicker">YORVI 2.0 · МОЙ ПРОФИЛЬ</span><h1>Личный кабинет<span>.</span></h1>
+     <p>Мои объявления, сообщества и модерация — данные из PostgreSQL.</p></div>
    <button className="sw-btn sw-secondary" type="button" disabled={busy||loading} onClick={()=>void fetchData()}>↻ Обновить</button>
   </div>
-  <div className="sw-warning"><b>Только локальная разработка.</b> Настоящая авторизация MAX пока не подключена. В production этот раздел скрыт, а серверные операции записи заблокированы.</div>
-  <div className="sw-user">
+  {sessionUser?
+    <div className="sw-alert sw-success">Вход подтверждён через MAX: <b>{sessionUser.nickname}</b>. Все изменения сохраняются на сервере.</div>:
+    import.meta.env.DEV?<div className="sw-warning"><b>Локальная разработка.</b> Для тестирования используйте тестовую БД и ALLOW_DEMO_AUTH=true. Это не реальный вход MAX.</div>:
+    <div className="sw-warning"><b>Нужен вход через MAX.</b> Откройте YORVI из мини-приложения MAX. Без подтверждённой сессии действия с объявлениями недоступны.</div>}
+  {!sessionUser&&!import.meta.env.DEV?<div className="sw-panel"><h2>Войдите через MAX</h2><p>Личный кабинет станет доступен после подтверждения учётной записи.</p><button className="sw-btn sw-secondary" onClick={()=>void refreshAuth()}>Проверить вход</button></div>:<>
+  {!sessionUser&&import.meta.env.DEV?<div className="sw-user">
    <label htmlFor="sw-user">UUID тестового пользователя</label>
    <input id="sw-user" value={user} onChange={e=>setUser(e.target.value)} spellCheck={false} aria-invalid={!uuidOrEmpty(user)}/>
    <button className="sw-btn sw-secondary" type="button" disabled={!uuidOrEmpty(user)||busy} onClick={()=>{try{localStorage.setItem(USER_STORAGE,user);}catch{}void fetchData();}}>Применить</button>
-  </div>
+  </div>:null}
   {alert&&<div role="status" className={'sw-alert sw-'+alert.kind}>{alert.text}</div>}
   <nav className="sw-tabs" aria-label="Раздел серверной мастерской">
    <button className={tab==='listings'?'active':''} onClick={()=>setTab('listings')}>Мои объявления ({mine.length})</button>
@@ -141,7 +163,7 @@ export default function ServerWorkspace() {
      <label className="sw-wide">Описание<textarea required maxLength={5000} rows={3} value={draft.description} onChange={e=>field('description',e.target.value)}/></label>
     </div>
     {!editId&&<fieldset className="sw-circles"><legend>Разместить в кругах</legend>{communities.map(c=><label key={c.id}><input type="checkbox" checked={chosenCircles.includes(c.id)} onChange={()=>toggleCircle(c.id)}/><span>{c.name}</span><small>{c.city}</small></label>)}{!communities.length&&<p>Нет доступных кругов — запустите PostgreSQL и загрузите тестовые данные.</p>}</fieldset>}
-    <div className="sw-actions"><button className="sw-btn sw-primary" disabled={busy||loading||!uuidOrEmpty(user)} type="submit">{busy?'Сохраняем…':editId?'Сохранить и проверить заново':'Создать и отправить'}</button>{editId&&<button className="sw-btn sw-secondary" type="button" onClick={()=>{setEditId(null);setDraft(startDraft);}}>Отмена</button>}</div>
+    <div className="sw-actions"><button className="sw-btn sw-primary" disabled={busy||loading||(!sessionUser&&!uuidOrEmpty(user))} type="submit">{busy?'Сохраняем…':editId?'Сохранить и проверить заново':'Создать и отправить'}</button>{editId&&<button className="sw-btn sw-secondary" type="button" onClick={()=>{setEditId(null);setDraft(startDraft);}}>Отмена</button>}</div>
    </form>
    <div className="sw-panel">
     <div className="sw-panel-head"><h2>Мои объявления</h2><span>{loading?'Обновление…':mine.length+' записей'}</span></div>
@@ -164,6 +186,7 @@ export default function ServerWorkspace() {
       <div className="sw-actions"><button className="sw-btn sw-primary" disabled={busy} onClick={()=>void moderate(item,'approved')}>✓ Одобрить</button><button className="sw-btn sw-danger" disabled={busy} onClick={()=>void moderate(item,'rejected')}>Отклонить</button></div>
      </article>)}</div>:<div className="sw-empty">Очередь пуста или недоступна для выбранного пользователя.</div>}
   </div>}
+  </>}
  </section>;
 
 }
