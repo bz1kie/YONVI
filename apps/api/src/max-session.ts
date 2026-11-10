@@ -32,7 +32,13 @@ export function registerMaxAuthentication(app:FastifyInstance,pool:Pool){
     `SELECT s.user_id FROM user_sessions s WHERE s.token_hash=$1 AND s.expires_at>now()`,
     [rawToHash(raw)],
    );
-   if(rows.length)(req as FastifyRequest & {yorviUserId?:string}).yorviUserId=String(rows[0].user_id);
+   if(rows.length){
+     // SameSite alone is not sufficient: same-site cross-origin requests still exist.
+     if (!['GET','HEAD','OPTIONS'].includes(req.method) && !originMatches(req)) {
+       throw Object.assign(new Error('Invalid Origin'),{statusCode:403});
+     }
+     (req as FastifyRequest & {yorviUserId?:string}).yorviUserId=String(rows[0].user_id);
+   }
  });
 
  const requireOrigin=(req:FastifyRequest,reply:any)=>{
