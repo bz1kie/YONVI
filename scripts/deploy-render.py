@@ -1,6 +1,7 @@
 """Use GitHub secrets in-process; never print API payloads or credentials."""
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -27,7 +28,16 @@ if not database and neon_secret:
             with urllib.request.urlopen(request, timeout=60) as response:
                 return json.load(response)
         except urllib.error.HTTPError as error:
-            fail(f'Neon API {method} {path.split("?")[0]} returned HTTP {error.code}. Check NEON API key permissions. Response body withheld.')
+            detail = ''
+            try:
+                payload = json.load(error)
+                detail = str(payload.get('message', payload.get('error', '')))
+                detail = detail.replace(neon_secret, '[REDACTED]')
+                detail = re.sub(r'postgres(?:ql)?://[^\s\"\']+', '[REDACTED_URI]', detail)
+                detail = detail.replace('\n', ' ')[:400]
+            except (ValueError, TypeError):
+                pass
+            fail(f'Neon API {method} {path.split("?")[0]} returned HTTP {error.code}: {detail}')
         except urllib.error.URLError:
             fail('Neon API network error. Credentials withheld.')
     organizations = neon('GET', '/users/me/organizations')['organizations']
