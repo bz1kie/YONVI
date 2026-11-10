@@ -1,6 +1,6 @@
-# MAX Mini App: серверная авторизация YORI
+# MAX Mini App: серверная авторизация YONVI
 
-Статус: разработческая реализация. Подключение реального бота MAX, зарегистрированного приложения и production-домена **не выполнено**.
+Статус: разработческая реализация. Бот YONVI создан и опубликован в MAX по скриншотам владельца; Mini App ещё не подключено к production HTTPS и backend.
 
 **Первичные источники:** [MAX: валидация данных](https://dev.max.ru/docs/webapps/validation/), [MAX Bridge](https://dev.max.ru/docs/webapps/bridge/), [подключение мини-приложения](https://dev.max.ru/docs/webapps/introduction).
 
@@ -23,19 +23,21 @@
 Создайте бота и мини-приложение по официальной документации MAX, затем задайте секреты на сервере (не в репозитории, не в Vite-переменных):
 
 ```env
-MAX_BOT_TOKEN=REPLACE_WITH_REAL_SECRET_IN_SERVER_ENV
+MAX_YONVI_TOKEN=REPLACE_WITH_REAL_SECRET_IN_SERVER_ENV
 DATABASE_URL=postgresql://...
-WEB_ORIGIN=https://your-real-yorvi-domain.example
+WEB_ORIGIN=https://your-real-yonvi-domain.example
 NODE_ENV=production
 ALLOW_DEMO_AUTH=false
 ```
 
 Для local dev: используйте `WEB_ORIGIN=http://localhost:5173` и отдельные тестовые бота/БД. Vite проксирует `/api` на Fastify.
 
-Не используйте `VITE_MAX_BOT_TOKEN` — это раскроет токен в браузерной сборке.
+Приложение принимает `MAX_YONVI_TOKEN` либо `MAX_BOT_TOKEN` на сервере; если заданы обе переменные, приоритет у `MAX_BOT_TOKEN`. Имя GitHub Actions Secret `MAX_YONVI_TOKEN` само по себе не устанавливает переменную на production-сервере. Не используйте `VITE_MAX_BOT_TOKEN` или `VITE_MAX_YONVI_TOKEN`: это раскроет токен в браузерной сборке.
+
+Пошаговое подключение: [MAX Mini App Deployment](MAX_DEPLOY.md).
 
 ### Логика входа
-1. Пользователь открывает YORI **из MAX**.
+1. Пользователь открывает YONVI **из MAX**.
 2. MAX Bridge выставляет `window.WebApp.initData`.
 3. Frontend отправляет эту строку в POST `/api/auth/max`.
 4. Сервер сверяет подпись, свежесть, личность пользователя.
@@ -44,7 +46,7 @@ ALLOW_DEMO_AUTH=false
 7. Выход удаляет сессию из базы.
 
 ## Ограничения
-- Не проведён реальный запуск внутри MAX: для него нужны зарегистрированный бот, токен, HTTPS и домен.
+- Не проведён реальный запуск Mini App внутри MAX: бот уже создан, но нужны HTTPS и домен, production API с БД и настройка ссылки открытия приложения в боте.
 - MAX user.id обрабатывается лексически после проверки HMAC (BigInt, диапазон положительных signed int64), без округления через Number/JSON.parse. Строковые ID и дубликаты полей отвергаются.
 - В базе пока нет устройства/истории сессий, управления всеми сессиями и отдельного фонового удаления просроченных записей.
 - Личный кабинет доступен после подтверждённой MAX-сессии: создание, редактирование, размещения и модерация используют Fastify/PostgreSQL. Каталог/главная и некоторые прежние экраны 1.4 по-прежнему содержат демонстрационное состояние localStorage; для полного production нужно завершить миграцию этих экранов.
