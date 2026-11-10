@@ -9,7 +9,11 @@ import { registerPhotoRoutes } from './photo-routes.js';
 import { registerFavoritesRoutes } from './favorites-routes.js';
 
 const app=Fastify({logger:true});
-const pool=new pg.Pool({connectionString:process.env.DATABASE_URL || 'postgresql://yorvi:yorvi_local_password@localhost:5432/yorvi'});
+const connectionString=process.env.DATABASE_URL || (!process.env.PGHOST && process.env.NODE_ENV !== 'production' ? 'postgresql://yorvi:yorvi_local_password@localhost:5432/yorvi' : undefined);
+if (process.env.NODE_ENV === 'production' && !connectionString && !process.env.PGHOST) {
+  throw new Error('Production PostgreSQL connection is not configured');
+}
+const pool=new pg.Pool(connectionString ? {connectionString} : {});
 await app.register(cors,{origin:process.env.WEB_ORIGIN || 'http://localhost:5173'});
 
 app.get('/health',async()=>({ok:true,service:'yorvi-api',version:'2.0.0-alpha.1'}));
