@@ -25,7 +25,7 @@ test('MAX: rejects incorrect token',()=>{
 });
 test('MAX: rejects duplicate fields',()=>{
   assert.throws(()=>verifyMaxInitData(signed()+'&user=another',{nowSeconds:now}),InvalidMaxData);
-  assert.throws(()=>verifyMaxInitData(signed()+'&hash='+('f'.repeat(64)),{nowSeconds:now}),InvalidMaxData);
+  assert.throws(()=>verifyMaxInitData(signed()+'&hash='+('f'.repeat(64)),token,{nowSeconds:now}),InvalidMaxData);
 });
 test('MAX: rejects stale or future login',()=>{
   assert.throws(()=>verifyMaxInitData(signed(),token,{nowSeconds:now+3601}),InvalidMaxData);
