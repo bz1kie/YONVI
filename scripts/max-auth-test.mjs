@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { verifyMaxInitData, signMaxFixture, InvalidMaxData } from '../apps/api/dist/max-auth.js';
+import { verifyMaxInitData, signMaxFixture, InvalidMaxData, configuredMaxBotToken } from '../apps/api/dist/max-auth.js';
 
 const token='unit-test-token-not-a-real-secret';
 const now=1_800_000_000;
@@ -63,4 +63,12 @@ test('MAX: rejects empty hash and malformed user',()=>{
   assert.throws(()=>verifyMaxInitData('user=x&hash=',token,{nowSeconds:now}),InvalidMaxData);
   const value=signMaxFixture({...base,user:'bad json'},token);
   assert.throws(()=>verifyMaxInitData(value,token,{nowSeconds:now}),InvalidMaxData);
+});
+
+// GitHub secret names and server env aliases are deliberately separate from the test signing key.
+test('MAX: runtime token supports YONVI alias without exposing a secret',()=>{
+  assert.equal(configuredMaxBotToken({MAX_YONVI_TOKEN:'alias-test-token'}),'alias-test-token');
+  assert.equal(configuredMaxBotToken({MAX_BOT_TOKEN:'primary',MAX_YONVI_TOKEN:'fallback'}),'primary');
+  assert.equal(configuredMaxBotToken({MAX_BOT_TOKEN:' ',MAX_YONVI_TOKEN:'fallback'}),'fallback');
+  assert.equal(configuredMaxBotToken({}),undefined);
 });
