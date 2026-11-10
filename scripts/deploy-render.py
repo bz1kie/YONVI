@@ -53,35 +53,58 @@ if not database and neon_secret:
         fail('Multiple Neon yonvi projects found; refusing to choose a database.')
     if found:
         project = found[0]
-        branches = neon('GET', '/projects/' + project['id'] + '/branches')['branches']
-        defaults = [branch for branch in branches if branch.get('default')]
-        if len(defaults) != 1:
-            fail('Cannot identify the default branch in Neon yonvi project.')
-        branch_id = defaults[0]['id']
-        databases = neon('GET', '/projects/' + project['id'] + '/branches/' + branch_id + '/databases')['databases']
-        preferred = [db for db in databases if db['name'] == 'yonvi']
-        if not preferred and len(databases) == 1:
-            preferred = databases
-        if len(preferred) != 1:
-            fail('Cannot identify the database in Neon yonvi project.')
-        db = preferred[0]
-        query = urllib.parse.urlencode({'branch_id': branch_id, 'database_name': db['name'], 'role_name': db['owner_name'], 'pooled': 'false'})
-        database = neon('GET', '/projects/' + project['id'] + '/connection_uri?' + query)['uri']
+    elif os.environ.get('VERCEL_API_KEY'):
+        vercel_key = os.environ['VERCEL_API_KEY'].strip()
+        request = urllib.request.Request(
+            'https://api.vercel.com/v1/storage/stores/integration/direct?teamId=team_9LrMxYeoFRaedXiBxKFNoAL4',
+            data=json.dumps({'name': 'yonvi', 'integrationConfigurationId': 'icfg_GwXL8m6i0D4bnfWJSQh2mwqp',
+                'integrationProductIdOrSlug': 'neon', 'billingPlanId': 'free_v3',
+                'metadata': {'region': 'fra1', 'auth': False, 'realtime': False},
+                'source': 'marketplace'}).encode(), method='POST',
+            headers={'Authorization': 'Bearer ' + vercel_key, 'Content-Type': 'application/json'})
+        try:
+            with urllib.request.urlopen(request, timeout=120) as response:
+                store = json.load(response)['store']
+        except urllib.error.HTTPError as error:
+            detail = ''
+            try:
+                payload = json.load(error)
+                detail = str(payload.get('error', {}).get('message', ''))
+                detail = detail.replace(vercel_key, '[REDACTED]').replace(neon_secret, '[REDACTED]')
+                detail = re.sub(r'postgres(?:ql)?://[^\s]+', '[REDACTED_URI]', detail).replace('\n', ' ')[:400]
+            except (ValueError, TypeError, AttributeError):
+                pass
+            fail(f'Vercel Free Neon creation returned HTTP {error.code}: {detail}')
+        except urllib.error.URLError:
+            fail('Vercel API network error; check Storage before retrying to avoid duplicates.')
+        if not store or not store.get('externalResourceId'):
+            fail('Vercel did not return the Neon project ID. Check Storage before retrying.')
+        print('Vercel Neon Free store created: ' + store.get('id', 'yonvi'))
+        project = {'id': store['externalResourceId']}
     else:
-        result = neon('POST', '/projects', {'project': {'name': 'yonvi', 'org_id': org_id,
-            'pg_version': 17, 'region_id': 'aws-eu-central-1',
-            'branch': {'name': 'main', 'database_name': 'yonvi', 'role_name': 'yonvi_owner'},
-            'default_endpoint_settings': {'autoscaling_limit_min_cu': 0.25, 'autoscaling_limit_max_cu': 0.25, 'suspend_timeout_seconds': 300}}})
-        project = result['project']
-        database = result['connection_uris'][0]['connection_uri']
-        # New compute provisioning is asynchronous. Do not attempt migrations until ready.
-        for _ in range(60):
-            endpoints = neon('GET', '/projects/' + project['id'] + '/endpoints')['endpoints']
-            if endpoints and all(endpoint.get('current_state') in ('active', 'idle') and not endpoint.get('pending_state') for endpoint in endpoints):
-                break
-            time.sleep(5)
-        else:
-            fail('Neon project created but compute provisioning is still pending. Rerun the workflow later.')
+        fail('Vercel_key is required to create Neon in this Vercel-managed organization.')
+    branches = neon('GET', '/projects/' + project['id'] + '/branches')['branches']
+    defaults = [branch for branch in branches if branch.get('default')]
+    if len(defaults) != 1:
+        fail('Cannot identify the default branch in Neon yonvi project.')
+    branch_id = defaults[0]['id']
+    databases = neon('GET', '/projects/' + project['id'] + '/branches/' + branch_id + '/databases')['databases']
+    preferred = [db for db in databases if db['name'] == 'yonvi']
+    if not preferred and len(databases) == 1:
+        preferred = databases
+    if len(preferred) != 1:
+        fail('Cannot identify the database in Neon yonvi project.')
+    db = preferred[0]
+    query = urllib.parse.urlencode({'branch_id': branch_id, 'database_name': db['name'], 'role_name': db['owner_name'], 'pooled': 'false'})
+    database = neon('GET', '/projects/' + project['id'] + '/connection_uri?' + query)['uri']
+    # Wait for the database compute before Render starts migrations.
+    for _ in range(60):
+        endpoints = neon('GET', '/projects/' + project['id'] + '/endpoints')['endpoints']
+        if endpoints and all(endpoint.get('current_state') in ('active', 'idle') and not endpoint.get('pending_state') for endpoint in endpoints):
+            break
+        time.sleep(5)
+    else:
+        fail('Neon compute provisioning is still pending. Rerun the workflow later.')
     # Generated credentials are not GitHub secrets yet: register them for log redaction.
     print('::add-mask::' + database)
     print('Neon Free PostgreSQL configured: ' + project['id'])
