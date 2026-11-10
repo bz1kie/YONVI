@@ -24,6 +24,7 @@ export function registerMarketplaceRoutes(app: FastifyInstance, pool: Pool, auth
     if (!userId) return reply.code(401).send({ error: 'Authentication required' });
     const { rows } = await pool.query(
       `SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.status,l.created_at,
+        (SELECT '/api/media/' || m.id::text FROM listing_media m WHERE m.listing_id=l.id AND m.upload_status='ready' ORDER BY m.sort_order,m.created_at LIMIT 1) AS photo_url,
         COALESCE(json_agg(json_build_object('communityId',p.community_id,'status',p.status))
         FILTER(WHERE p.id IS NOT NULL),'[]'::json) AS placements
         FROM listings l LEFT JOIN placements p ON p.listing_id=l.id
