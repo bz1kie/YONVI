@@ -2,7 +2,8 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import pg from 'pg';
 import { z } from 'zod';
-import { canTransition, canModerate } from './domain.mjs';
+import { canModerate } from './domain.mjs';
+import { registerMarketplaceRoutes } from './marketplace-routes.js';
 
 const app=Fastify({logger:true});
 const pool=new pg.Pool({connectionString:process.env.DATABASE_URL || 'postgresql://yorvi:yorvi_local_password@localhost:5432/yorvi'});
@@ -48,11 +49,12 @@ app.post('/api/listings/:id/sold',async(req,reply)=>{
   const userId=auth(req);if(!userId)return reply.code(401).send({error:'Unauthorized'});
   const id=(req.params as {id:string}).id;
   if(!z.string().uuid().safeParse(id).success)return reply.code(400).send({error:'Invalid id'});
-  const db=await pool.query('SELECT status FROM listings WHERE id=$1 AND seller_id=$2',[id,userId]);
-  if(!db.rows.length)return reply.code(404).send({error:'Not found'});
-  if(!canTransition(db.rows[0].status,'sold'))return reply.code(409).send({error:'Invalid state transition'});
-  await pool.query(`UPDATE listings SET status='sold',updated_at=now() WHERE id=$1 AND seller_id=$2 AND status=$3`,[id,userId,db.rows[0].status]);
-  return {ok:true};
+  // Atomic conditional update avoids TOCTOU races when another request changes status.
+  const {rows}=await pool.query(`UPDATE listings SET status='sold',updated_at=now()
+    WHERE id=$1 AND seller_id=$2 AND status IN ('active','reserved') RETURNING id`,[id,userId]);
+  if(rows.length)return {ok:true};
+  const exists=await pool.query('SELECT id FROM listings WHERE id=$1 AND seller_id=$2',[id,userId]);
+  return exists.rows.length?reply.code(409).send({error:'Invalid state transition'}):reply.code(404).send({error:'Not found'});
 });
 app.get('/api/communities',async()=>({items:(await pool.query("SELECT id,name,city,visibility FROM communities WHERE visibility='public' ORDER BY name")).rows}));
 app.post('/api/placements/:id/moderate',async(req,reply)=>{
@@ -63,16 +65,19 @@ app.post('/api/placements/:id/moderate',async(req,reply)=>{
   const client=await pool.connect();
   try{
     await client.query('BEGIN');
-    const item=await client.query(`SELECT p.id,p.status,r.role FROM placements p
+    const item=await client.query(`SELECT p.id,p.status,r.role,c.owner_id FROM placements p
+      JOIN communities c ON c.id=p.community_id
       LEFT JOIN community_roles r ON r.community_id=p.community_id AND r.user_id=$2 WHERE p.id=$1 FOR UPDATE OF p`,[id,userId]);
     if(!item.rows.length){await client.query('ROLLBACK');return reply.code(404).send({error:'Not found'});}
-    if(!canModerate(item.rows[0].role)){await client.query('ROLLBACK');return reply.code(403).send({error:'Forbidden'});}
+    if(item.rows[0].owner_id!==userId && !canModerate(item.rows[0].role)){await client.query('ROLLBACK');return reply.code(403).send({error:'Forbidden'});}
     if(item.rows[0].status!=='pending'){await client.query('ROLLBACK');return reply.code(409).send({error:'Already reviewed'});}
     await client.query('UPDATE placements SET status=$1,reviewed_by=$2,reviewed_at=now() WHERE id=$3',[p.data!.decision,userId,id]);
     await client.query('INSERT INTO moderation_actions(placement_id,moderator_id,decision,reason) VALUES($1,$2,$3,$4)',[id,userId,p.data!.decision,p.data!.reason||null]);
     await client.query('COMMIT');return {ok:true};
   } catch(e){await client.query('ROLLBACK');throw e;} finally {client.release();}
 });
+
+registerMarketplaceRoutes(app,pool,auth);
 
 const port=Number(process.env.PORT||3001);
 try{await app.listen({port,host:'0.0.0.0'});}catch(err){app.log.error(err);process.exit(1)}
