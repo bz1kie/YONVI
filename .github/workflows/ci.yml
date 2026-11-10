@@ -31,6 +31,13 @@ jobs:
       - run: npm run build
       - run: node --test scripts/max-auth-test.mjs
       - run: node --test scripts/photo-policy-test.mjs
+      - name: Verify production migrations are repeatable
+        run: |
+          node scripts/migrate-db.mjs
+          node scripts/migrate-db.mjs
+      - name: Verify migrations do not insert demo users
+        run: |
+          node --input-type=module -e "import pg from 'pg'; const c=new pg.Client({connectionString:process.env.DATABASE_URL}); await c.connect(); const result=await c.query('SELECT count(*)::int AS n FROM users'); await c.end(); if(result.rows[0].n!==0)process.exit(1)"
       - run: node scripts/prepare-db.mjs
       - run: node scripts/integration-test.mjs
       - run: node scripts/integration-write-test.mjs
@@ -51,3 +58,11 @@ jobs:
         run: node scripts/integration-photo-minio-test.mjs
         env:
           S3_ENDPOINT: http://127.0.0.1:8333
+      - name: Validate production Docker Compose
+        run: docker compose --env-file deploy/production.env.example -f compose.production.yml config --quiet
+      - name: Build production API container
+        run: docker build -f deploy/Dockerfile.api -t yonvi-api:ci .
+      - name: Build production web container
+        run: docker build -f deploy/Dockerfile.web -t yonvi-web:ci .
+      - name: Validate Caddy configuration
+        run: docker run --rm -e YONVI_DOMAIN=example.com yonvi-web:ci caddy validate --config /etc/caddy/Caddyfile
