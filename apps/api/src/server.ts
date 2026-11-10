@@ -11,7 +11,7 @@ await app.register(cors,{origin:process.env.WEB_ORIGIN || 'http://localhost:5173
 app.get('/health',async()=>({ok:true,service:'yorvi-api',version:'2.0.0-alpha.1'}));
 const auth=(req:any):string|null=>{
   // FOR LOCAL DEVELOPMENT ONLY. Do NOT expose as production login. MAX HMAC verification is not implemented.
-  if (process.env.NODE_ENV==='production') return null;
+  if (process.env.NODE_ENV==='production' || process.env.ALLOW_DEMO_AUTH!=='true') return null;
   const id=req.headers['x-demo-user-id'];
   return typeof id==='string' && /^[0-9a-f-]{36}$/i.test(id) ? id : null;
 };
