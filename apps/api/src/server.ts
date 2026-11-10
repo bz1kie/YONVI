@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { canModerate } from './domain.mjs';
 import { registerMarketplaceRoutes } from './marketplace-routes.js';
 import { registerMaxAuthentication, currentUserId } from './max-session.js';
+import { registerPhotoRoutes } from './photo-routes.js';
 
 const app=Fastify({logger:true});
 const pool=new pg.Pool({connectionString:process.env.DATABASE_URL || 'postgresql://yorvi:yorvi_local_password@localhost:5432/yorvi'});
@@ -17,7 +18,12 @@ app.get('/api/listings',async(req,reply)=>{
   const q=z.object({city:z.string().max(80).optional(),category:z.string().max(50).optional(),search:z.string().max(100).optional(),limit:z.coerce.number().int().min(1).max(50).default(20)}).safeParse(req.query);
   if(!q.success)return reply.code(400).send({error:'Invalid query'});
   const {city,category,search,limit}=q.data;
-  const {rows}=await pool.query(`SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.created_at, u.nickname AS seller_name FROM listings l JOIN users u ON u.id=l.seller_id WHERE l.status='active' AND EXISTS (SELECT 1 FROM placements p WHERE p.listing_id=l.id AND p.status='approved')
+  const {rows}=await pool.query(`SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.created_at, u.nickname AS seller_name, media.photo_url FROM listings l JOIN users u ON u.id=l.seller_id
+  LEFT JOIN LATERAL (
+    SELECT '/api/media/' || m.id::text AS photo_url
+    FROM listing_media m WHERE m.listing_id=l.id AND m.upload_status='ready'
+    ORDER BY m.sort_order,m.created_at LIMIT 1
+  ) media ON true WHERE l.status='active' AND EXISTS (SELECT 1 FROM placements p WHERE p.listing_id=l.id AND p.status='approved')
     AND ($1::text IS NULL OR l.city=$1)
     AND ($2::text IS NULL OR l.category=$2)
     AND ($3::text IS NULL OR l.title ILIKE '%'||$3||'%')
@@ -27,7 +33,12 @@ app.get('/api/listings',async(req,reply)=>{
 app.get('/api/listings/:id',async(req,reply)=>{
   const id=(req.params as {id:string}).id;
   if(!z.string().uuid().safeParse(id).success)return reply.code(400).send({error:'Invalid id'});
-  const {rows}=await pool.query("SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.created_at,u.nickname AS seller_name FROM listings l JOIN users u ON u.id=l.seller_id WHERE l.id=$1 AND l.status=$2 AND EXISTS (SELECT 1 FROM placements p WHERE p.listing_id=l.id AND p.status='approved')",[id,'active']);
+  const {rows}=await pool.query("SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.created_at,u.nickname AS seller_name, media.photo_url FROM listings l JOIN users u ON u.id=l.seller_id
+  LEFT JOIN LATERAL (
+    SELECT '/api/media/' || m.id::text AS photo_url
+    FROM listing_media m WHERE m.listing_id=l.id AND m.upload_status='ready'
+    ORDER BY m.sort_order,m.created_at LIMIT 1
+  ) media ON true WHERE l.id=$1 AND l.status=$2 AND EXISTS (SELECT 1 FROM placements p WHERE p.listing_id=l.id AND p.status='approved')",[id,'active']);
   if(!rows.length)return reply.code(404).send({error:'Not found'});
   return rows[0];
 });
@@ -84,6 +95,7 @@ app.post('/api/placements/:id/moderate',async(req,reply)=>{
 });
 
 registerMarketplaceRoutes(app,pool,auth);
+registerPhotoRoutes(app,pool,auth);
 
 const port=Number(process.env.PORT||3001);
 try{await app.listen({port,host:'0.0.0.0'});}catch(err){app.log.error(err);process.exit(1)}
