@@ -23,7 +23,7 @@ interface State {
   query: string; filters: Filters; filterOpen: boolean; selectedListing: string | null;
   activeCircle: string | null; createOpen: boolean; editId: string | null;
   step: number; draft: Draft; modCircle: string; modTab: 'pending' | 'approved' | 'all';
-  toast: string; helpOpen: boolean; copiedLink: boolean; apiStatus: 'checking' | 'live' | 'demo'; serverCount: number;
+  toast: string; helpOpen: boolean; copiedLink: boolean; apiStatus: 'checking' | 'live' | 'demo' | 'error'; serverCount: number;
 }
 const CAT = [
   {id:'all',name:'Всё',emoji:'✦',bg:'violet'},
@@ -134,7 +134,7 @@ const initState = ():State => {
  const saved=safeGet(STORE_KEY);
  return {
   theme: saved&&saved.theme==='dark'?'dark':'light',page:'home',
-  listings: saved&&Array.isArray(saved.listings)?saved.listings:SEED,
+  listings: import.meta.env.DEV?(saved&&Array.isArray(saved.listings)?saved.listings:SEED):[],
   circles:saved&&Array.isArray(saved.circles)?saved.circles:CIRCLES_BASE,
   favorites:saved&&Array.isArray(saved.favorites)?saved.favorites:[],
   query:'',filters:{...DEFAULT_FILTERS},filterOpen:false,selectedListing:null,activeCircle:null,
@@ -158,13 +158,13 @@ class App extends React.Component<{},State> {
   // Read-only integration: intentionally never sends demo user IDs or writes.
   // If API is absent or empty, continue in explicitly labeled local demo mode.
   fetchPublicListings().then(({items})=>{
-   if(!items.length){this.setState({apiStatus:'demo',serverCount:0});return;}
+   if(!items.length){this.setState({listings:import.meta.env.DEV?this.state.listings:[],apiStatus:import.meta.env.DEV?'demo':'live',serverCount:0});return;}
    const remote:Listing[]=items.map((l:ServerListing)=>({id:l.id,title:l.title,description:l.description||'',price:Number(l.price_kopecks)/100,
     category:l.category,city:l.city,condition:'good',status:'active',deal:'sell',emoji:'📦',art:'art-blue',
     seller:l.seller_name||'Продавец',mine:false,views:0,createdAt:new Date(l.created_at).getTime()||Date.now(),
     placements:{global:'approved'},image:l.photo_url||undefined}));
    this.setState({listings:remote,apiStatus:'live',serverCount:remote.length});
-  }).catch(()=>this.setState({apiStatus:'demo',serverCount:0}));
+  }).catch(()=>this.setState({listings:import.meta.env.DEV?this.state.listings:[],apiStatus:import.meta.env.DEV?'demo':'error',serverCount:0}));
  }
  componentWillUnmount(){document.removeEventListener('keydown',this.onKeyDown);}
  onKeyDown=(e:KeyboardEvent)=>{if(e.key==='Escape'&&(this.state.selectedListing||this.state.createOpen||this.state.helpOpen)){this.setState({selectedListing:null,createOpen:false,helpOpen:false});}};
@@ -277,6 +277,6 @@ class App extends React.Component<{},State> {
  </div></div>;}
  renderHelp(){return <div className="modal-layer" onMouseDown={(e:any)=>{if(e.target===e.currentTarget)this.setState({helpOpen:false});}}><div className="help-modal"><button className="modal-close" onClick={()=>this.setState({helpOpen:false})}><Icon name="close"/></button><img src="assets/yori-raccoon.webp" alt="Йори приветствует"/><span className="micro">ЗНАКОМЬСЯ</span><h2>Йори на связи! <span>✦</span></h2><p>Я — маскот YORVI. Помогу разобраться с объявлениями, кругами и находками. Пока я живу в демо-прототипе, но скоро появлюсь и в боте MAX.</p><div className="help-buttons"><button className="btn btn-primary" onClick={()=>{this.setState({helpOpen:false});this.openCreate();}}>Разместить вещь</button><button className="btn btn-secondary" onClick={()=>{this.setState({helpOpen:false});this.go('circles');}}>Посмотреть круги</button></div></div></div>;}
  renderMobileNav(){return <nav className="mobile-nav">{[{id:'home',name:'Главная',icon:'home'},{id:'catalog',name:'Поиск',icon:'search'},{id:'create',name:'Продать',icon:'plus'},{id:'circles',name:'Круги',icon:'users'},{id:'server',name:'Профиль',icon:'user'}].map(n=><button className={(this.state.page===n.id?'active':'')+(n.id==='create'?' mobile-create':'')} key={n.id} onClick={()=>n.id==='create'?this.openCreate():this.go(n.id as Page)}><Icon name={n.icon} size={21}/><span>{n.name}</span></button>)}</nav>;}
- render(){const {page}=this.state;return <div className="app-shell">{this.renderSidebar()}<div className="main-shell">{this.renderHeader()}<main className="page-content" id="main"><div className={'api-status api-'+this.state.apiStatus} role="status">{this.state.apiStatus==='checking'?'Проверяем подключение к серверу…':this.state.apiStatus==='live'?`Подключено к API · ${this.state.serverCount} объявлений из PostgreSQL (просмотр)`:'Демо-режим · объявления сохраняются только в этом браузере'}</div>{page==='home'?this.renderHome():page==='catalog'?this.renderCatalog():page==='circles'?this.renderCircles():page==='favorites'?this.renderFavorites():page==='my'?this.renderMy():page==='moderation'?this.renderModeration():page==='server'?<ServerWorkspace/>:this.renderKit()}</main><footer className="app-footer"><span>© 2026 YORVI. Находи своё.</span><span>YORVI 2.0 alpha · вход MAX по защищённой сессии · платежи ещё не подключены</span><button onClick={()=>this.resetDemo()}><Icon name="reset" size={13}/>Сбросить демо</button></footer></div>{this.renderMobileNav()}{this.state.selectedListing?this.renderDetails():null}{this.state.createOpen?this.renderCreate():null}{this.state.helpOpen?this.renderHelp():null}{this.state.toast?<div className="toast"><Icon name="check" size={16}/>{this.state.toast}</div>:null}</div>;}
+ render(){const {page}=this.state;return <div className="app-shell">{this.renderSidebar()}<div className="main-shell">{this.renderHeader()}<main className="page-content" id="main"><div className={'api-status api-'+this.state.apiStatus} role="status">{this.state.apiStatus==='checking'?'Проверяем подключение к серверу…':this.state.apiStatus==='live'?`Подключено к API · ${this.state.serverCount} объявлений из PostgreSQL (просмотр)` :this.state.apiStatus==='error'?'Каталог временно недоступен. Попробуйте обновить страницу.':'Демо-режим · объявления сохраняются только в этом браузере'}</div>{page==='home'?this.renderHome():page==='catalog'?this.renderCatalog():page==='circles'?this.renderCircles():page==='favorites'?this.renderFavorites():page==='my'?this.renderMy():page==='moderation'?this.renderModeration():page==='server'?<ServerWorkspace/>:this.renderKit()}</main><footer className="app-footer"><span>© 2026 YORVI. Находи своё.</span><span>YORVI 2.0 alpha · вход MAX по защищённой сессии · платежи ещё не подключены</span><button onClick={()=>this.resetDemo()}><Icon name="reset" size={13}/>Сбросить демо</button></footer></div>{this.renderMobileNav()}{this.state.selectedListing?this.renderDetails():null}{this.state.createOpen?this.renderCreate():null}{this.state.helpOpen?this.renderHelp():null}{this.state.toast?<div className="toast"><Icon name="check" size={16}/>{this.state.toast}</div>:null}</div>;}
 }
 export default App;
