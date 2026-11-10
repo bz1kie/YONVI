@@ -1,5 +1,10 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
+/** Resolve the runtime-only MAX token. A GitHub Actions secret is not injected into the server automatically. */
+export function configuredMaxBotToken(env: { MAX_BOT_TOKEN?: string; MAX_YONVI_TOKEN?: string } = process.env): string | undefined {
+  return env.MAX_BOT_TOKEN?.trim() || env.MAX_YONVI_TOKEN?.trim() || undefined;
+}
+
 export type VerifiedMaxUser = {
   maxUserId: string;
   displayName: string;
