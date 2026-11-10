@@ -137,3 +137,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .api-status::before{content:"";width:8px;height:8px;flex:none;border-radius:50%;background:#a3adb2}
 .api-live::before{background:#78c637;box-shadow:0 0 0 3px #78c63733}
 .api-demo::before{background:#d4a53d}
+/* Authenticated MAX status: responsive, theme-aware */
+.max-auth-badge{display:flex;align-items:center;gap:8px;max-width:220px;border:1px solid var(--border);background:var(--surface);color:var(--muted);border-radius:999px;padding:9px 12px;font-weight:800;font-size:11px;white-space:nowrap}
+.max-auth-badge.max-auth-active{background:var(--surface-alt);color:var(--text);border-color:#91c52d}
+.max-auth-badge span{overflow:hidden;text-overflow:ellipsis}
+.max-auth-badge button{border:0;background:#c8ff4d;color:#18200b;padding:5px 8px;border-radius:99px;font-size:10px;font-weight:800;cursor:pointer}
+@media(max-width:680px){.max-auth-badge{max-width:120px;padding:6px 8px;font-size:9px}.max-auth-badge button{padding:4px 6px;font-size:9px}}
