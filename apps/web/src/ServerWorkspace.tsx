@@ -5,7 +5,7 @@ import './server-workspace.css';
 const DEV_USER = '11111111-1111-4111-8111-111111111111';
 const USER_STORAGE = 'yorvi-local-test-user';
 type Placement = { communityId: string; status: string };
-type MyListing = { id: string; title: string; description: string; price_kopecks: string|number; status: string; city: string; category: string; placements: Placement[] };
+type MyListing = { id: string; title: string; description: string; price_kopecks: string|number; status: string; city: string; category: string; photo_url?: string|null; placements: Placement[] };
 type Community = { id:string; name:string; city?:string };
 type QueueItem = { placement_id:string; listing_id:string; title:string; description:string; price_kopecks:string|number; city:string };
 type Draft = { title:string; description:string; price:string; city:string; category:string };
@@ -61,6 +61,8 @@ export default function ServerWorkspace() {
  const [selectedCircle,setSelectedCircle]=useState('');
  const [chosenCircles,setChosenCircles]=useState<string[]>([]);
  const [draft,setDraft]=useState<Draft>(startDraft);
+ const [photoFile,setPhotoFile]=useState<File|null>(null);
+ const [photoListing,setPhotoListing]=useState<string>('');
  const [editId,setEditId]=useState<string|null>(null);
  const [busy,setBusy]=useState(false);
  const [loading,setLoading]=useState(false);
@@ -112,6 +114,23 @@ export default function ServerWorkspace() {
     }
     setDraft(startDraft);setEditId(null);
   },editId?'Изменения сохранены. Публикация отправлена на повторную проверку.':'Объявление создано и отправлено модераторам.');
+ }
+ async function uploadPhoto(listingId:string, file:File){
+   if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size<64||file.size>5*1024*1024)
+      throw new Error('Фото: JPEG, PNG или WebP до 5 МБ.');
+   const signed=await api<{uploadUrl:string;mediaId:string;headers:Record<string,string>}>(
+      '/api/media/uploads',user,
+      {method:'POST',body:JSON.stringify({listingId,contentType:file.type,size:file.size})},
+      Boolean(sessionUser)
+   );
+   const result=await fetch(signed.uploadUrl,{method:'PUT',headers:signed.headers,body:file});
+   if(!result.ok)throw new Error('Не удалось передать изображение в хранилище: '+result.status);
+   await api('/api/media/'+signed.mediaId+'/confirm',user,{method:'POST'},Boolean(sessionUser));
+ }
+ async function uploadExisting(){
+  const file=photoFile;
+  if(!file||!photoListing){notify('error','Выберите товар и фотографию');return;}
+  await action(async()=>{await uploadPhoto(photoListing,file);setPhotoFile(null);},'Фотография загружена. Товар отправлен на повторную модерацию.');
  }
  function edit(l:MyListing){
   if(l.status!=='draft'&&l.status!=='active')return;
@@ -166,9 +185,22 @@ export default function ServerWorkspace() {
     <div className="sw-actions"><button className="sw-btn sw-primary" disabled={busy||loading||(!sessionUser&&!uuidOrEmpty(user))} type="submit">{busy?'Сохраняем…':editId?'Сохранить и проверить заново':'Создать и отправить'}</button>{editId&&<button className="sw-btn sw-secondary" type="button" onClick={()=>{setEditId(null);setDraft(startDraft);}}>Отмена</button>}</div>
    </form>
    <div className="sw-panel">
+    <div className="sw-panel-head"><h2>Фотографии товаров</h2><span>JPEG, PNG или WebP до 5 МБ</span></div>
+    <p>Добавьте фото к созданному объявлению. После загрузки товар снова проходит модерацию.</p>
+    <div className="sw-fields">
+      <label>Объявление<select value={photoListing} onChange={e=>setPhotoListing(e.target.value)}>
+        <option value="">Выберите объявление</option>
+        {mine.filter(l=>l.status==='draft'||l.status==='active').map(l=><option value={l.id} key={l.id}>{l.title}</option>)}
+      </select></label>
+      <label>Фотография<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>setPhotoFile(e.target.files?.[0]||null)}/></label>
+    </div>
+    <div className="sw-actions"><button className="sw-btn sw-primary" disabled={busy||!photoFile||!photoListing} onClick={()=>void uploadExisting()}>Загрузить фото</button></div>
+    {photoFile?<small>{photoFile.name} · {(photoFile.size/1024/1024).toFixed(2)} МБ</small>:null}
+   </div>
+   <div className="sw-panel">
     <div className="sw-panel-head"><h2>Мои объявления</h2><span>{loading?'Обновление…':mine.length+' записей'}</span></div>
     {mine.length?<div className="sw-list">{mine.map(l=><article className="sw-listing" key={l.id}>
-      <div className="sw-item-top"><div><h3>{l.title}</h3><p>{l.city} · {rub(l.price_kopecks)}</p></div><span className={'sw-status '+l.status}>{statusText[l.status]||l.status}</span></div>
+      <div className="sw-item-top">{l.photo_url?<img src={l.photo_url} alt={"Фотография "+l.title} className="sw-cover" loading="lazy"/>:null}<div><h3>{l.title}</h3><p>{l.city} · {rub(l.price_kopecks)}</p></div><span className={'sw-status '+l.status}>{statusText[l.status]||l.status}</span></div>
       <div className="sw-placement">{(l.placements||[]).map(p=><span key={p.communityId}>{communities.find(c=>c.id===p.communityId)?.name||'Круг'} · {statusText[p.status]||p.status}</span>)}</div>
       <div className="sw-actions">
        {(l.status==='draft'||l.status==='active')&&<button className="sw-btn sw-secondary" disabled={busy} onClick={()=>edit(l)}>Редактировать</button>}
