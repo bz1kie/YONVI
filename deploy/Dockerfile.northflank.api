@@ -1,0 +1,26 @@
+# Northflank combined API service: Docker context must be repository root (/).
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY package.json ./
+COPY apps/api/package.json ./apps/api/package.json
+COPY apps/web/package.json ./apps/web/package.json
+COPY packages/database/package.json ./packages/database/package.json
+COPY packages/shared/package.json ./packages/shared/package.json
+RUN npm install --no-audit --no-fund
+COPY apps/api ./apps/api
+COPY packages ./packages
+COPY scripts/migrate-db.mjs ./scripts/migrate-db.mjs
+RUN npm run build -w @yorvi/api && npm prune --omit=dev --no-audit --no-fund
+
+FROM node:22-alpine
+ENV NODE_ENV=production PORT=3001 ALLOW_DEMO_AUTH=false
+WORKDIR /app
+COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/apps/api/dist ./apps/api/dist
+COPY --from=build --chown=node:node /app/apps/api/package.json ./apps/api/package.json
+COPY --from=build --chown=node:node /app/packages ./packages
+COPY --from=build --chown=node:node /app/scripts/migrate-db.mjs ./scripts/migrate-db.mjs
+USER node
+EXPOSE 3001
+# The idempotent migration runs before API startup, no demo seed is ever loaded.
+CMD ["sh","-c","node scripts/migrate-db.mjs && exec node apps/api/dist/server.js"]
