@@ -1,5 +1,10 @@
-# YORVI 2.0 alpha — implementation status
-The first repository scaffold adds Vite, React, Fastify, PostgreSQL SQL migration, shared types and 6 domain unit tests.
-**Important:** Full React 1.4 source/assets, complete Fastify routes and tested install are currently included in the downloadable alpha archive, not yet in GitHub.
-Because the npm registry was inaccessible, no npm install or Vite/Fastify build was validated in this environment. The 6 built-in Node domain tests passed locally.
-Real MAX authentication, media upload, server authorization, payment and messaging are not implemented. Never use demo IDs as production authentication.
+# YORVI 2.0 alpha — статус реализации
+
+- Полный UI React из YORVI 1.4 перенесён в Vite и опубликован в GitHub с CSS, веб-ресурсами, Йори-енотом и фотографическими иллюстрациями.
+- API возвращает только активные лоты с одобренным размещением; карточки с sold/draft/archived не выдаются.
+- Vite проксирует `/api` на Fastify; UI переключается на read-only server catalog при наличии данных или явно объявляет локальный demo mode.
+- Демо-создание, избранное и модерация в UI пока **не пишут в PostgreSQL**.
+- Пример seed SQL для PostgreSQL содержит 2 активных одобренных лота и 1 проданный для проверки фильтрации.
+- Демо-авторизация по HTTP-заголовку **выключена по умолчанию** и запрещена для публичного сервера.
+- Серверная MAX auth, реальный RBAC и S3 upload ещё не реализованы.
+- Локальная среда не имеет доступа к npm registry, но GitHub Actions успешно выполнял сборку обоих приложений после исправления TypeScript деклараций; новые коммиты требуют повторной проверки CI.
