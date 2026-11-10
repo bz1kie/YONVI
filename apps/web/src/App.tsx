@@ -169,7 +169,7 @@ class App extends React.Component<{},State> {
  componentWillUnmount(){document.removeEventListener('keydown',this.onKeyDown);}
  onKeyDown=(e:KeyboardEvent)=>{if(e.key==='Escape'&&(this.state.selectedListing||this.state.createOpen||this.state.helpOpen)){this.setState({selectedListing:null,createOpen:false,helpOpen:false});}};
  say(message:string){this.setState({toast:message});window.setTimeout(()=>{if(this.state.toast===message)this.setState({toast:''});},3200);}
- go(page:Page){this.setState({page,selectedListing:null,activeCircle:null,createOpen:false,filterOpen:false});window.scrollTo(0,0);}
+ go(page:Page){const target=!import.meta.env.DEV&&(page==='my'||page==='moderation')?'server':page;this.setState({page:target,selectedListing:null,activeCircle:null,createOpen:false,filterOpen:false});window.scrollTo(0,0);}
  openListing(id:string){
   const l=this.state.listings.find(x=>x.id===id);
   this.setState({selectedListing:id,activeCircle:null,createOpen:false,gallery:l?.image?[l.image]:[],galleryIndex:0});
@@ -185,6 +185,7 @@ class App extends React.Component<{},State> {
  favorite(id:string){this.setState(s=>({favorites:s.favorites.includes(id)?s.favorites.filter(x=>x!==id):[...s.favorites,id]}));}
  switchTheme(){this.setState(s=>({theme:s.theme==='light'?'dark':'light'}));}
  openCreate(editId:string|null=null){
+  if(!import.meta.env.DEV){this.go('server');return;}
   const found=this.state.listings.find(x=>x.id===editId);
   const draft:Draft=found?{title:found.title,price:String(found.price),category:found.category,city:found.city,condition:found.condition,deal:found.deal,description:found.description,emoji:found.emoji,art:found.art,image:found.image,circles:Object.keys(found.placements)}:EMPTY_DRAFT();
   this.setState({createOpen:true,editId,step:1,draft,selectedListing:null,activeCircle:null});
@@ -221,7 +222,7 @@ class App extends React.Component<{},State> {
   this.setState(s=>({listings:s.listings.map(l=>l.id===id?{...l,placements:{...l.placements,[circle]:result}}:l)}));
   this.say(result==='approved'?'Размещение одобрено':result==='rejected'?'Размещение отклонено':'Отправлено на повторную проверку');
  }
- resetDemo(){if(!window.confirm('Сбросить все изменения, объявления и избранное?'))return;localStorage.removeItem(STORE_KEY);this.setState(initState());this.say('Демонстрационные данные восстановлены');}
+ resetDemo(){if(!import.meta.env.DEV)return;if(!window.confirm('Сбросить все изменения, объявления и избранное?'))return;localStorage.removeItem(STORE_KEY);this.setState(initState());this.say('Демонстрационные данные восстановлены');}
  filterItems(items:Listing[]){const {query,filters:f}=this.state;return items.filter(l=>{
   if(l.status!=='active')return false;
   if(f.circle!=='all'&&l.placements[f.circle]!=='approved')return false;
