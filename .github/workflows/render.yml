@@ -19,6 +19,7 @@ jobs:
         env:
           RENDER_API_KEY: ${{ secrets.Render_key }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEON: ${{ secrets.NEON }}
           MAX_YONVI_TOKEN: ${{ secrets.MAX_YONVI_TOKEN }}
           RENDER_OWNER_ID: ${{ vars.RENDER_OWNER_ID }}
         run: python3 scripts/deploy-render.py

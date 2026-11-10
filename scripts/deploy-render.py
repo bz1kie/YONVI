@@ -13,10 +13,70 @@ def fail(message):
 
 key = os.environ.get('RENDER_API_KEY', '').strip()
 database = os.environ.get('DATABASE_URL', '').strip()
+neon_secret = os.environ.get('NEON', '').strip()
 if not key:
     fail('GitHub Actions secret Render_key is missing or unavailable.')
+if not database and neon_secret.startswith(('postgres://', 'postgresql://')):
+    database = neon_secret
+if not database and neon_secret:
+    def neon(method, path, body=None):
+        request = urllib.request.Request('https://console.neon.tech/api/v2' + path,
+            data=None if body is None else json.dumps(body).encode(), method=method,
+            headers={'Authorization': 'Bearer ' + neon_secret, 'Content-Type': 'application/json'})
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                return json.load(response)
+        except urllib.error.HTTPError as error:
+            fail(f'Neon API {method} {path.split("?")[0]} returned HTTP {error.code}. Check NEON API key permissions. Response body withheld.')
+        except urllib.error.URLError:
+            fail('Neon API network error. Credentials withheld.')
+    organizations = neon('GET', '/users/me/organizations')['organizations']
+    free_orgs = [org for org in organizations if org.get('plan', '').lower().startswith('free')]
+    if len(free_orgs) != 1:
+        fail('Neon requires exactly one accessible Free organization for automatic setup. No paid organization was selected.')
+    org_id = free_orgs[0]['id']
+    projects = neon('GET', '/projects?' + urllib.parse.urlencode({'org_id': org_id, 'search': 'yonvi', 'limit': 400}))
+    if projects.get('unavailable'):
+        fail('Neon project listing is incomplete; refusing to create a duplicate.')
+    found = [p for p in projects['projects'] if p['name'] == 'yonvi']
+    if len(found) > 1:
+        fail('Multiple Neon yonvi projects found; refusing to choose a database.')
+    if found:
+        project = found[0]
+        branches = neon('GET', '/projects/' + project['id'] + '/branches')['branches']
+        defaults = [branch for branch in branches if branch.get('default')]
+        if len(defaults) != 1:
+            fail('Cannot identify the default branch in Neon yonvi project.')
+        branch_id = defaults[0]['id']
+        databases = neon('GET', '/projects/' + project['id'] + '/branches/' + branch_id + '/databases')['databases']
+        preferred = [db for db in databases if db['name'] == 'yonvi']
+        if not preferred and len(databases) == 1:
+            preferred = databases
+        if len(preferred) != 1:
+            fail('Cannot identify the database in Neon yonvi project.')
+        db = preferred[0]
+        query = urllib.parse.urlencode({'branch_id': branch_id, 'database_name': db['name'], 'role_name': db['owner_name'], 'pooled': 'false'})
+        database = neon('GET', '/projects/' + project['id'] + '/connection_uri?' + query)['uri']
+    else:
+        result = neon('POST', '/projects', {'project': {'name': 'yonvi', 'org_id': org_id,
+            'pg_version': 17, 'region_id': 'aws-eu-central-1',
+            'branch': {'name': 'main', 'database_name': 'yonvi', 'role_name': 'yonvi_owner'},
+            'default_endpoint_settings': {'autoscaling_limit_min_cu': 0.25, 'autoscaling_limit_max_cu': 0.25, 'suspend_timeout_seconds': 300}}})
+        project = result['project']
+        database = result['connection_uris'][0]['connection_uri']
+        # New compute provisioning is asynchronous. Do not attempt migrations until ready.
+        for _ in range(60):
+            endpoints = neon('GET', '/projects/' + project['id'] + '/endpoints')['endpoints']
+            if endpoints and all(endpoint.get('current_state') in ('active', 'idle') and not endpoint.get('pending_state') for endpoint in endpoints):
+                break
+            time.sleep(5)
+        else:
+            fail('Neon project created but compute provisioning is still pending. Rerun the workflow later.')
+    # Generated credentials are not GitHub secrets yet: register them for log redaction.
+    print('::add-mask::' + database)
+    print('Neon Free PostgreSQL configured: ' + project['id'])
 if not database:
-    fail('GitHub Actions secret DATABASE_URL is missing or unavailable.')
+    fail('GitHub Actions secrets DATABASE_URL and NEON are missing or unavailable.')
 if urllib.parse.urlsplit(database).scheme not in ('postgres', 'postgresql'):
     fail('DATABASE_URL must be a PostgreSQL connection URI.')
 
