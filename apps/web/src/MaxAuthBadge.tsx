@@ -23,7 +23,7 @@ export default function MaxAuthBadge(){
   try{
    const who=await fetch('/api/auth/me',{credentials:'same-origin',cache:'no-store'});
    if(who.ok){
-    const data=await json<{user:SessionUser}>(who);setUser(data.user);setStatus('signed-in');return;
+    const data=await json<{user:SessionUser}>(who);setUser(data.user);setStatus('signed-in');window.dispatchEvent(new Event('yorvi:auth-change'));return;
    }
    const bridge=(window as WindowWithMax).WebApp;
    const initData=bridge?.initData;
@@ -31,7 +31,7 @@ export default function MaxAuthBadge(){
    const loggedIn=await json<{user:SessionUser}>(await fetch('/api/auth/max',{
     method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData}),
    }));
-   setUser(loggedIn.user);setStatus('signed-in');bridge?.ready?.();
+   setUser(loggedIn.user);setStatus('signed-in');window.dispatchEvent(new Event('yorvi:auth-change'));bridge?.ready?.();
   }catch(e){
    setStatus('error');setError(e instanceof Error?e.message:'Не удалось войти');
   }
@@ -40,7 +40,7 @@ export default function MaxAuthBadge(){
  const logout=async()=>{
   try{
    await json(await fetch('/api/auth/logout',{method:'POST',credentials:'same-origin'}));
-   setUser(null);setStatus('outside-max');
+   setUser(null);setStatus('outside-max');window.dispatchEvent(new Event('yorvi:auth-change'));
   }catch(e){setError(e instanceof Error?e.message:'Ошибка выхода');setStatus('error');}
  };
  if(status==='loading')return <span className="max-auth-badge" aria-label="Проверка входа MAX">MAX · проверяем вход</span>;
