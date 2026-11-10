@@ -10,5 +10,17 @@ services:
     volumes:
       - yorvi_pgdata:/var/lib/postgresql/data
       - ./packages/database/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+  minio:
+    image: minio/minio:latest
+    command: server /data --address ":9000" --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: yorvi_local_access
+      MINIO_ROOT_PASSWORD: yorvi_local_secret_change_before_deploy
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - yorvi_minio_data:/data
 volumes:
   yorvi_pgdata:
+  yorvi_minio_data:
