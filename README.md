@@ -2,7 +2,7 @@
 
 **YONVI («По лапкам — и по рукам! 🤝»)** — маркетплейс объявлений с каталогом, фотографиями, единой карточкой товара и публикацией в нескольких «кругах» сообществ. Каждый круг модерирует размещение независимо. Маскот — **Йонви-енот**.
 
-## Состояние · 10 ноября 2026: YONVI 2.3 alpha
+## Состояние · 10 ноября 2026: YONVI 2.4 deployment-prep (alpha)
 
 **Реализовано в репозитории:**
 - React 19 + TypeScript + Vite: адаптивный интерфейс, бренд и изображения Йонви.
@@ -19,6 +19,8 @@
 React + TypeScript + Vite · Fastify + TypeScript · PostgreSQL · Node 22 · Docker Compose · S3 compatible storage · AWS SDK.
 
 Next.js может быть добавлен **позже** для отдельного публичного SEO-сайта.
+
+**Подготовка к production-пилоту 2.4:** `compose.production.yml` (Caddy HTTPS + Fastify + PostgreSQL), Dockerfile для веба и API, отдельный `scripts/migrate-db.mjs` без демоданных. Конфигурация требует внешнего VPS и домена: это **ещё не действующий публичный сайт**. [Инструкция для VPS](docs/PRODUCTION_VPS.md).
 
 ## Локальный запуск
 
