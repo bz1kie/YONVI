@@ -37,7 +37,7 @@ Web: http://localhost:5173 · API health: http://localhost:3001/health
 
 Для тестового создания объявлений без настоящего MAX задайте в **локальном** окружении API `NODE_ENV=development` и `ALLOW_DEMO_AUTH=true`. Никогда не включайте это на публичном сервере.
 
-Для загрузки фотографий настройте `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` и CORS бакета. Без этих параметров фото-API возвращает 503.
+Для локального S3: `docker compose up -d` поднимает SeaweedFS (`http://127.0.0.1:8333`), а `S3_ENDPOINT=http://127.0.0.1:8333 node scripts/setup-minio.mjs` создаёт bucket. Для загрузки фотографий настройте `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` и CORS бакета. Без этих параметров фото-API возвращает 503.
 
 ## Тесты
 
@@ -55,4 +55,4 @@ GitHub Actions выполняет те же ключевые проверки н
 
 ## Документация
 
-[Продукт](docs/PRODUCT.md) · [Архитектура](docs/ARCHITECTURE.md) · [Бренд](docs/BRAND.md) · [Roadmap](docs/ROADMAP.md) · [MAX Auth](docs/MAX_AUTH.md) · [Фотографии](docs/PHOTOS.md) · [Server API](docs/API_WRITES.md)
+[Продукт](docs/PRODUCT.md) · [Архитектура](docs/ARCHITECTURE.md) · [Бренд](docs/BRAND.md) · [Roadmap](docs/ROADMAP.md) · [MAX Auth](docs/MAX_AUTH.md) · [Фотографии](docs/PHOTOS.md) · [Галерея и локальный S3](docs/MINIO_GALLERY.md) · [Server API](docs/API_WRITES.md)
