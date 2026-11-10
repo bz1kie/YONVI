@@ -6,6 +6,7 @@ import { canModerate } from './domain.mjs';
 import { registerMarketplaceRoutes } from './marketplace-routes.js';
 import { registerMaxAuthentication, currentUserId } from './max-session.js';
 import { registerPhotoRoutes } from './photo-routes.js';
+import { registerFavoritesRoutes } from './favorites-routes.js';
 
 const app=Fastify({logger:true});
 const pool=new pg.Pool({connectionString:process.env.DATABASE_URL || 'postgresql://yorvi:yorvi_local_password@localhost:5432/yorvi'});
@@ -15,19 +16,21 @@ app.get('/health',async()=>({ok:true,service:'yorvi-api',version:'2.0.0-alpha.1'
 registerMaxAuthentication(app,pool);
 const auth=currentUserId;
 app.get('/api/listings',async(req,reply)=>{
-  const q=z.object({city:z.string().max(80).optional(),category:z.string().max(50).optional(),search:z.string().max(100).optional(),limit:z.coerce.number().int().min(1).max(50).default(20)}).safeParse(req.query);
+  const q=z.object({city:z.string().max(80).optional(),category:z.string().max(50).optional(),search:z.string().max(100).optional(),communityId:z.string().uuid().optional(),limit:z.coerce.number().int().min(1).max(50).default(20)}).safeParse(req.query);
   if(!q.success)return reply.code(400).send({error:'Invalid query'});
-  const {city,category,search,limit}=q.data;
+  const {city,category,search,communityId,limit}=q.data;
   const {rows}=await pool.query(`SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.created_at, u.nickname AS seller_name, media.photo_url FROM listings l JOIN users u ON u.id=l.seller_id
   LEFT JOIN LATERAL (
     SELECT '/api/media/' || m.id::text AS photo_url
     FROM listing_media m WHERE m.listing_id=l.id AND m.upload_status='ready'
     ORDER BY m.sort_order,m.created_at LIMIT 1
-  ) media ON true WHERE l.status='active' AND EXISTS (SELECT 1 FROM placements p WHERE p.listing_id=l.id AND p.status='approved')
+  ) media ON true WHERE l.status='active' AND EXISTS (SELECT 1 FROM placements p JOIN communities c ON c.id=p.community_id
+      WHERE p.listing_id=l.id AND p.status='approved' AND c.visibility='public'
+        AND ($5::uuid IS NULL OR p.community_id=$5))
     AND ($1::text IS NULL OR l.city=$1)
     AND ($2::text IS NULL OR l.category=$2)
     AND ($3::text IS NULL OR l.title ILIKE '%'||$3||'%')
-    ORDER BY l.created_at DESC LIMIT $4`,[city||null,category||null,search||null,limit]);
+    ORDER BY l.created_at DESC LIMIT $4`,[city||null,category||null,search||null,limit,communityId||null]);
   return {items:rows};
 });
 app.get('/api/listings/:id',async(req,reply)=>{
@@ -98,6 +101,7 @@ app.post('/api/placements/:id/moderate',async(req,reply)=>{
 
 registerMarketplaceRoutes(app,pool,auth);
 registerPhotoRoutes(app,pool,auth);
+registerFavoritesRoutes(app,pool,auth);
 
 const port=Number(process.env.PORT||3001);
 try{await app.listen({port,host:'0.0.0.0'});}catch(err){app.log.error(err);process.exit(1)}
