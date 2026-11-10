@@ -61,7 +61,9 @@ export default function ServerWorkspace() {
  const [selectedCircle,setSelectedCircle]=useState('');
  const [chosenCircles,setChosenCircles]=useState<string[]>([]);
  const [draft,setDraft]=useState<Draft>(startDraft);
- const [photoFile,setPhotoFile]=useState<File|null>(null);
+ const [photoFiles,setPhotoFiles]=useState<File[]>([]);
+ const [uploadProgress,setUploadProgress]=useState('');
+ const [pendingDraftId,setPendingDraftId]=useState<string|null>(null);
  const [photoListing,setPhotoListing]=useState<string>('');
  const [editId,setEditId]=useState<string|null>(null);
  const [busy,setBusy]=useState(false);
@@ -93,7 +95,7 @@ export default function ServerWorkspace() {
  useEffect(()=>{if(tab==='moderation')void fetchQueue();},[tab,fetchQueue]);
  async function action(work:()=>Promise<void>,success:string){
   setBusy(true);
-  try {await work();await fetchData();if(tab==='moderation')await fetchQueue();notify('success',success);}
+  try {await work();await fetchData();if(tab==='moderation')await fetchQueue();notify('success',success);window.dispatchEvent(new Event('yorvi:catalog-change'));}
   catch(error){notify('error',errorText(error));}
   finally{setBusy(false);}
  }
@@ -102,17 +104,31 @@ export default function ServerWorkspace() {
   const price=Number(draft.price);
   if(!draft.title.trim()||!draft.description.trim()||!Number.isFinite(price)||price<0){notify('error','Укажите название, описание и корректную цену.');return;}
   if(!editId&&!chosenCircles.length){notify('error','Выберите хотя бы один круг.');return;}
+  if(photoFiles.length>10){notify('error','Максимум 10 фотографий');return;}
   await action(async()=>{
     const values={title:draft.title.trim(),description:draft.description.trim(),priceKopecks:Math.round(price*100)};
+    let listingId=editId||pendingDraftId;
     if(editId){
       await api(`/api/listings/${editId}`,user,{method:'PATCH',body:JSON.stringify(values)},Boolean(sessionUser));
+    }else if(pendingDraftId){
+      await api(`/api/listings/${pendingDraftId}`,user,{method:'PATCH',body:JSON.stringify(values)},Boolean(sessionUser));
     }else{
       const listing=await api<{id:string}>('/api/listings',user,{method:'POST',body:JSON.stringify({
         ...values,city:draft.city,category:draft.category,requestKey:crypto.randomUUID(),
       })},Boolean(sessionUser));
-      await api(`/api/listings/${listing.id}/submit`,user,{method:'POST',body:JSON.stringify({communityIds:chosenCircles})},Boolean(sessionUser));
+      listingId=listing.id;
+      setPendingDraftId(listing.id);
     }
-    setDraft(startDraft);setEditId(null);
+    if(!listingId)throw new Error('Объявление не найдено');
+    for(let i=0;i<photoFiles.length;i++){
+      setUploadProgress(`Фото ${i+1} из ${photoFiles.length}`);
+      await uploadPhoto(listingId,photoFiles[i]);
+    }
+    setUploadProgress('');
+    if(!editId){
+      await api(`/api/listings/${listingId}/submit`,user,{method:'POST',body:JSON.stringify({communityIds:chosenCircles})},Boolean(sessionUser));
+    }
+    setDraft(startDraft);setEditId(null);setPhotoFiles([]);setPendingDraftId(null);
   },editId?'Изменения сохранены. Публикация отправлена на повторную проверку.':'Объявление создано и отправлено модераторам.');
  }
  async function uploadPhoto(listingId:string, file:File){
@@ -128,13 +144,18 @@ export default function ServerWorkspace() {
    await api('/api/media/'+signed.mediaId+'/confirm',user,{method:'POST'},Boolean(sessionUser));
  }
  async function uploadExisting(){
-  const file=photoFile;
-  if(!file||!photoListing){notify('error','Выберите товар и фотографию');return;}
-  await action(async()=>{await uploadPhoto(photoListing,file);setPhotoFile(null);},'Фотография загружена. Товар отправлен на повторную модерацию.');
+  if(!photoFiles.length||!photoListing){notify('error','Выберите товар и фотографии');return;}
+  await action(async()=>{
+    for(let i=0;i<photoFiles.length;i++){
+      setUploadProgress(`Фото ${i+1} из ${photoFiles.length}`);
+      await uploadPhoto(photoListing,photoFiles[i]);
+    }
+    setUploadProgress('');setPhotoFiles([]);
+  },'Фотографии загружены и отправлены на повторную модерацию.');
  }
  function edit(l:MyListing){
   if(l.status!=='draft'&&l.status!=='active')return;
-  setEditId(l.id);setDraft({title:l.title,description:l.description,price:String(Number(l.price_kopecks)/100),city:l.city,category:l.category});
+  setEditId(l.id);setPhotoFiles([]);setPendingDraftId(null);setDraft({title:l.title,description:l.description,price:String(Number(l.price_kopecks)/100),city:l.city,category:l.category});
   window.scrollTo({top:0,behavior:'smooth'});
  }
  function toggleCircle(id:string){setChosenCircles(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id]);}
@@ -181,22 +202,24 @@ export default function ServerWorkspace() {
      <label>Категория<select disabled={!!editId} value={draft.category} onChange={e=>field('category',e.target.value)}><option value="electronics">Электроника</option><option value="gaming">Игры</option><option value="fashion">Одежда</option><option value="home">Для дома</option><option value="transport">Транспорт</option><option value="hobby">Хобби</option><option value="auto">Авто</option></select></label>
      <label className="sw-wide">Описание<textarea required maxLength={5000} rows={3} value={draft.description} onChange={e=>field('description',e.target.value)}/></label>
     </div>
-    {!editId&&<fieldset className="sw-circles"><legend>Разместить в кругах</legend>{communities.map(c=><label key={c.id}><input type="checkbox" checked={chosenCircles.includes(c.id)} onChange={()=>toggleCircle(c.id)}/><span>{c.name}</span><small>{c.city}</small></label>)}{!communities.length&&<p>Нет доступных кругов — запустите PostgreSQL и загрузите тестовые данные.</p>}</fieldset>}
-    <div className="sw-actions"><button className="sw-btn sw-primary" disabled={busy||loading||(!sessionUser&&!uuidOrEmpty(user))} type="submit">{busy?'Сохраняем…':editId?'Сохранить и проверить заново':'Создать и отправить'}</button>{editId&&<button className="sw-btn sw-secondary" type="button" onClick={()=>{setEditId(null);setDraft(startDraft);}}>Отмена</button>}</div>
-   </form>
-   <div className="sw-panel">
-    <div className="sw-panel-head"><h2>Фотографии товаров</h2><span>JPEG, PNG или WebP до 5 МБ</span></div>
-    <p>Добавьте фото к созданному объявлению. После загрузки товар снова проходит модерацию.</p>
-    <div className="sw-fields">
-      <label>Объявление<select value={photoListing} onChange={e=>setPhotoListing(e.target.value)}>
-        <option value="">Выберите объявление</option>
-        {mine.filter(l=>l.status==='draft'||l.status==='active').map(l=><option value={l.id} key={l.id}>{l.title}</option>)}
-      </select></label>
-      <label>Фотография<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>setPhotoFile(e.target.files?.[0]||null)}/></label>
+    <div className="sw-photo-picker">
+      <label htmlFor="sw-create-photos">Фотографии · до 10 шт.</label>
+      <input id="sw-create-photos" type="file" multiple accept="image/jpeg,image/png,image/webp"
+        onChange={e=>{
+          const files=Array.from(e.target.files||[]);
+          if(files.length>10||files.some(f=>!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size<64||f.size>5*1024*1024)){
+            notify('error','Выберите до 10 JPEG, PNG или WebP (до 5 МБ каждый).');e.target.value='';return;
+          }
+          setPhotoFiles(files);
+        }}/>
+      {photoFiles.length?<div className="sw-photo-chips">{photoFiles.map((file,i)=><span key={file.name+'-'+i}>{i+1}. {file.name}</span>)}</div>:null}
+      <small>Файлы отправляются до публикации. При ошибке черновик останется в базе.</small>
     </div>
-    <div className="sw-actions"><button className="sw-btn sw-primary" disabled={busy||!photoFile||!photoListing} onClick={()=>void uploadExisting()}>Загрузить фото</button></div>
-    {photoFile?<small>{photoFile.name} · {(photoFile.size/1024/1024).toFixed(2)} МБ</small>:null}
-   </div>
+    {!editId&&<fieldset className="sw-circles"><legend>Разместить в кругах</legend>{communities.map(c=><label key={c.id}><input type="checkbox" checked={chosenCircles.includes(c.id)} onChange={()=>toggleCircle(c.id)}/><span>{c.name}</span><small>{c.city}</small></label>)}{!communities.length&&<p>Нет доступных кругов — запустите PostgreSQL и загрузите тестовые данные.</p>}</fieldset>}
+    {uploadProgress?<p role="status" className="sw-upload-progress">Загружаем {uploadProgress}</p>:null}
+    {pendingDraftId&&!editId?<p className="sw-upload-progress">Черновик сохранён. Повторная отправка не создаст дубликат.</p>:null}
+    <div className="sw-actions"><button className="sw-btn sw-primary" disabled={busy||loading||(!sessionUser&&!uuidOrEmpty(user))} type="submit">{busy?'Сохраняем…':editId?'Сохранить и проверить заново':'Создать и отправить'}</button>{editId&&<button className="sw-btn sw-secondary" type="button" onClick={()=>{setEditId(null);setPendingDraftId(null);setPhotoFiles([]);setDraft(startDraft);}}>Отмена</button>}</div>
+   </form>
    <div className="sw-panel">
     <div className="sw-panel-head"><h2>Мои объявления</h2><span>{loading?'Обновление…':mine.length+' записей'}</span></div>
     {mine.length?<div className="sw-list">{mine.map(l=><article className="sw-listing" key={l.id}>
