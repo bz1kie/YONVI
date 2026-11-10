@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: yorvi
+      POSTGRES_PASSWORD: yorvi_local_password
+      POSTGRES_DB: yorvi
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - yorvi_pgdata:/var/lib/postgresql/data
+      - ./packages/database/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+volumes:
+  yorvi_pgdata:

@@ -1,0 +1,18 @@
+{
+  "name": "yorvi",
+  "private": true,
+  "version": "2.0.0-alpha.1",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w @yorvi/web",
+    "dev:api": "npm run dev -w @yorvi/api",
+    "test": "node --test apps/api/test/*.test.mjs",
+    "build": "npm run build -w @yorvi/web && npm run build -w @yorvi/api"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
