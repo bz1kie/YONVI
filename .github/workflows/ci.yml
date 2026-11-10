@@ -66,3 +66,9 @@ jobs:
         run: docker build -f deploy/Dockerfile.web -t yonvi-web:ci .
       - name: Validate Caddy configuration
         run: docker run --rm -e YONVI_DOMAIN=example.com yonvi-web:ci caddy validate --config /etc/caddy/Caddyfile
+      - name: Build Northflank API container
+        run: docker build -f deploy/Dockerfile.northflank.api -t yonvi-northflank-api:ci .
+      - name: Build Northflank web container
+        run: docker build -f deploy/Dockerfile.northflank.web -t yonvi-northflank-web:ci .
+      - name: Validate Northflank Caddy configuration
+        run: docker run --rm yonvi-northflank-web:ci caddy validate --config /etc/caddy/Caddyfile
