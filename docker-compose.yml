@@ -10,17 +10,16 @@ services:
     volumes:
       - yorvi_pgdata:/var/lib/postgresql/data
       - ./packages/database/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
-  minio:
-    image: quay.io/minio/minio:RELEASE.2025-02-07T23-21-09Z
-    command: server /data --address ":9000" --console-address ":9001"
+  storage:
+    image: chrislusf/seaweedfs:latest
     environment:
-      MINIO_ROOT_USER: yorvi_local_access
-      MINIO_ROOT_PASSWORD: yorvi_local_secret_change_before_deploy
+      AWS_ACCESS_KEY_ID: yorvi_local_access
+      AWS_SECRET_ACCESS_KEY: yorvi_local_secret_change_before_deploy
+      S3_BUCKET: yorvi-private
     ports:
-      - "127.0.0.1:9000:9000"
-      - "127.0.0.1:9001:9001"
+      - "127.0.0.1:8333:8333"
     volumes:
-      - yorvi_minio_data:/data
+      - yorvi_s3_data:/data
 volumes:
   yorvi_pgdata:
-  yorvi_minio_data:
+  yorvi_s3_data:
