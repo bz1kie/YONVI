@@ -173,13 +173,13 @@ class App extends React.Component<{},State> {
   try{
     const response=await fetch('/api/auth/me',{credentials:'same-origin',cache:'no-store'});
     if(!response.ok){
-      this.setState({favoritesAuthenticated:false,...(!import.meta.env.DEV?{favorites:[],favoriteListings:[]}:{})});
+      if(import.meta.env.DEV){this.setState({favoritesAuthenticated:false});}else{this.setState({favoritesAuthenticated:false,favorites:[],favoriteListings:[]});}
       return;
     }
     const {items}=await fetchMyFavorites();
     this.setState({favoritesAuthenticated:true,favorites:items.map(x=>x.id),favoriteListings:items.map(this.toListing)});
   }catch{
-    this.setState({favoritesAuthenticated:false,...(!import.meta.env.DEV?{favorites:[],favoriteListings:[]}:{})});
+    if(import.meta.env.DEV){this.setState({favoritesAuthenticated:false});}else{this.setState({favoritesAuthenticated:false,favorites:[],favoriteListings:[]});}
   }
  };
  loadCircles=()=>{
