@@ -15,6 +15,8 @@
 
 ## 1. Развернуть HTTPS
 
+Для существующего React/Fastify/PostgreSQL добавлен готовый шаблон Docker Compose + Caddy: [развёртывание YONVI на VPS](PRODUCTION_VPS.md). Домен и VPS пока не настроены.
+
 Разместить frontend и backend под **одним HTTPS origin** (например, `https://<ваш-домен>`):
 - `/` → собранный `apps/web/dist` (Vite/React);
 - `/api/*` → Fastify (локально порт `3001`);
