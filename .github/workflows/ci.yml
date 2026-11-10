@@ -41,7 +41,7 @@ jobs:
             -p 127.0.0.1:9000:9000 \
             -e MINIO_ROOT_USER=yorvi_local_access \
             -e MINIO_ROOT_PASSWORD=yorvi_local_secret_change_before_deploy \
-            minio/minio:latest server /data --address ":9000"
+            quay.io/minio/minio:RELEASE.2025-02-07T23-21-09Z server /data --address ":9000"
       - name: Create private test photo bucket
         run: node scripts/setup-minio.mjs
       - name: Verify signed upload, gallery and sold privacy
