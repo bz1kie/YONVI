@@ -1,5 +1,5 @@
 import React from 'react';
-import { fetchPublicListings, type ServerListing } from './lib/api';
+import { fetchPublicListings, fetchPublicCircles, fetchMyFavorites, setFavorite, type ServerListing, type ServerCircle } from './lib/api';
 import ServerWorkspace from './ServerWorkspace';
 import MaxAuthBadge from './MaxAuthBadge';
 /* YORVI Marketplace Prototype 1.4. React + TypeScript, self-contained offline demonstration. */
@@ -23,7 +23,7 @@ interface State {
   query: string; filters: Filters; filterOpen: boolean; selectedListing: string | null;
   activeCircle: string | null; createOpen: boolean; editId: string | null;
   step: number; draft: Draft; modCircle: string; modTab: 'pending' | 'approved' | 'all';
-  toast: string; helpOpen: boolean; copiedLink: boolean; apiStatus: 'checking' | 'live' | 'demo' | 'error'; serverCount: number; gallery: string[]; galleryIndex: number;
+  toast: string; helpOpen: boolean; copiedLink: boolean; apiStatus: 'checking' | 'live' | 'demo' | 'error'; serverCount: number; gallery: string[]; galleryIndex: number; serverCircles: ServerCircle[]; selectedCommunityId: string | null; favoriteListings: Listing[]; favoritesAuthenticated: boolean;
 }
 const CAT = [
   {id:'all',name:'Всё',emoji:'✦',bg:'violet'},
@@ -136,48 +136,71 @@ const initState = ():State => {
   theme: saved&&saved.theme==='dark'?'dark':'light',page:'home',
   listings: import.meta.env.DEV?(saved&&Array.isArray(saved.listings)?saved.listings:SEED):[],
   circles:saved&&Array.isArray(saved.circles)?saved.circles:CIRCLES_BASE,
-  favorites:saved&&Array.isArray(saved.favorites)?saved.favorites:[],
+  favorites:import.meta.env.DEV&&saved&&Array.isArray(saved.favorites)?saved.favorites:[],
   query:'',filters:{...DEFAULT_FILTERS},filterOpen:false,selectedListing:null,activeCircle:null,
   createOpen:false,editId:null,step:1,draft:EMPTY_DRAFT(),modCircle:'tech',modTab:'pending',
-  toast:'',helpOpen:false,copiedLink:false,apiStatus:'checking',serverCount:0,gallery:[],galleryIndex:0
+  toast:'',helpOpen:false,copiedLink:false,apiStatus:'checking',serverCount:0,gallery:[],galleryIndex:0,serverCircles:[],selectedCommunityId:null,favoriteListings:[],favoritesAuthenticated:false
  };
 };
 class App extends React.Component<{},State> {
  constructor(props:{}){super(props);this.state=initState();}
  componentDidUpdate(_prevProps:{},prev:State){
   if(prev.theme!==this.state.theme||prev.listings!==this.state.listings||prev.favorites!==this.state.favorites||prev.circles!==this.state.circles){
-   try{localStorage.setItem(STORE_KEY,JSON.stringify({theme:this.state.theme,listings:this.state.listings,favorites:this.state.favorites,circles:this.state.circles}));}catch(e){console.warn('Не удалось сохранить изменения в браузере',e);}
+   try{localStorage.setItem(STORE_KEY,JSON.stringify({theme:this.state.theme,listings:import.meta.env.DEV?this.state.listings:[],favorites:import.meta.env.DEV?this.state.favorites:[],circles:import.meta.env.DEV?this.state.circles:[]}));}catch(e){console.warn('Не удалось сохранить изменения в браузере',e);}
   }
   document.documentElement.setAttribute('data-theme',this.state.theme);
  }
+ toListing=(l:ServerListing):Listing=>({
+  id:l.id,title:l.title,description:l.description||'',price:Number(l.price_kopecks)/100,
+  category:l.category,city:l.city,condition:'good',status:'active',deal:'sell',emoji:'📦',art:'art-blue',
+  seller:l.seller_name||'Продавец',mine:false,views:0,
+  createdAt:new Date(l.created_at).getTime()||Date.now(),placements:{global:'approved'},image:l.photo_url||undefined
+ });
  refreshCatalog=()=>{
-  // All public listings come from PostgreSQL; dev seed stays explicitly local.
-  fetchPublicListings().then(({items})=>{
-   if(!items.length){
-    this.setState({listings:import.meta.env.DEV?this.state.listings:[],apiStatus:import.meta.env.DEV?'demo':'live',serverCount:0,selectedListing:null,gallery:[],galleryIndex:0});
-    return;
-   }
-   const remote:Listing[]=items.map((l:ServerListing)=>({id:l.id,title:l.title,description:l.description||'',price:Number(l.price_kopecks)/100,
-    category:l.category,city:l.city,condition:'good',status:'active',deal:'sell',emoji:'📦',art:'art-blue',
-    seller:l.seller_name||'Продавец',mine:false,views:0,createdAt:new Date(l.created_at).getTime()||Date.now(),
-    placements:{global:'approved'},image:l.photo_url||undefined}));
-   this.setState(state=>({
-     listings:remote,apiStatus:'live',serverCount:remote.length,
-     selectedListing:state.selectedListing&&remote.some(l=>l.id===state.selectedListing)?state.selectedListing:null
-   }));
-  }).catch(()=>this.setState({listings:import.meta.env.DEV?this.state.listings:[],apiStatus:import.meta.env.DEV?'demo':'error',serverCount:0}));
+  const circle=this.state.selectedCommunityId||undefined;
+  fetchPublicListings({communityId:circle}).then(({items})=>{
+    const demo=import.meta.env.DEV&&!circle&&items.length===0;
+    const remote=demo?this.state.listings:items.map(this.toListing);
+    this.setState(state=>({
+      listings:remote,apiStatus:demo?'demo':'live',serverCount:items.length,
+      selectedListing:state.selectedListing&&remote.some(l=>l.id===state.selectedListing)?state.selectedListing:null
+    }));
+  }).catch(()=>this.setState({
+    listings:import.meta.env.DEV?this.state.listings:[],apiStatus:import.meta.env.DEV?'demo':'error',serverCount:0
+  }));
+ };
+ refreshFavorites=async()=>{
+  try{
+    const response=await fetch('/api/auth/me',{credentials:'same-origin',cache:'no-store'});
+    if(!response.ok){
+      this.setState({favoritesAuthenticated:false,...(!import.meta.env.DEV?{favorites:[],favoriteListings:[]}:{})});
+      return;
+    }
+    const {items}=await fetchMyFavorites();
+    this.setState({favoritesAuthenticated:true,favorites:items.map(x=>x.id),favoriteListings:items.map(this.toListing)});
+  }catch{
+    this.setState({favoritesAuthenticated:false,...(!import.meta.env.DEV?{favorites:[],favoriteListings:[]}:{})});
+  }
+ };
+ loadCircles=()=>{
+   fetchPublicCircles().then(result=>this.setState({serverCircles:result.items})).catch(()=>{});
+ };
+ selectServerCircle=(id:string|null)=>{
+   this.setState({selectedCommunityId:id,page:'catalog',activeCircle:null},this.refreshCatalog);
  };
  componentDidMount(){
   document.addEventListener('keydown',this.onKeyDown);
   window.addEventListener('yorvi:catalog-change',this.refreshCatalog);
+  window.addEventListener('yorvi:auth-change',this.refreshFavorites);
   document.documentElement.setAttribute('data-theme',this.state.theme);
   const id=new URLSearchParams(window.location.search).get('listing');
   if(id&&this.state.listings.some(l=>l.id===id))this.setState({selectedListing:id,page:'catalog'});
-  this.refreshCatalog();
+  this.refreshCatalog();this.refreshFavorites();this.loadCircles();
  }
  componentWillUnmount(){
   document.removeEventListener('keydown',this.onKeyDown);
   window.removeEventListener('yorvi:catalog-change',this.refreshCatalog);
+  window.removeEventListener('yorvi:auth-change',this.refreshFavorites);
  }
  onKeyDown=(e:KeyboardEvent)=>{if(e.key==='Escape'&&(this.state.selectedListing||this.state.createOpen||this.state.helpOpen)){this.setState({selectedListing:null,createOpen:false,helpOpen:false});}};
  say(message:string){this.setState({toast:message});window.setTimeout(()=>{if(this.state.toast===message)this.setState({toast:''});},3200);}
@@ -194,7 +217,19 @@ class App extends React.Component<{},State> {
      if(images.length)this.setState({gallery:images,galleryIndex:0});
    }).catch(()=>{ /* Keep cover photo if gallery request fails. */ });
 }
- favorite(id:string){this.setState(s=>({favorites:s.favorites.includes(id)?s.favorites.filter(x=>x!==id):[...s.favorites,id]}));}
+ async favorite(id:string){
+  if(import.meta.env.DEV && !this.state.favoritesAuthenticated && !/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(id)){
+    this.setState(s=>({favorites:s.favorites.includes(id)?s.favorites.filter(x=>x!==id):[...s.favorites,id]}));
+    return;
+  }
+  if(!this.state.favoritesAuthenticated){this.say('Для избранного войдите через MAX');this.go('server');return;}
+  const desired=!this.state.favorites.includes(id);
+  try{
+    await setFavorite(id,desired);
+    await this.refreshFavorites();
+    this.say(desired?'Добавлено в избранное':'Удалено из избранного');
+  }catch{this.say('Не удалось изменить избранное. Попробуйте снова.');}
+}
  switchTheme(){this.setState(s=>({theme:s.theme==='light'?'dark':'light'}));}
  openCreate(editId:string|null=null){
   if(!import.meta.env.DEV){this.go('server');return;}
@@ -284,11 +319,11 @@ class App extends React.Component<{},State> {
  renderFilterbar(){const f=this.state.filters;return <><div className="filter-header"><div className="search-box"><Icon name="search"/><input value={this.state.query} placeholder="Найти то, что ищешь..." onChange={(e:any)=>this.setState({query:e.target.value})}/>{this.state.query?<button aria-label="Очистить поиск" onClick={()=>this.setState({query:''})}><Icon name="close" size={16}/></button>:null}</div><button className={'btn btn-filter '+(this.state.filterOpen?'filter-on':'')} onClick={()=>this.setState(s=>({filterOpen:!s.filterOpen}))}><Icon name="filter" size={17}/>Фильтры</button></div>
   <div className="quick-filters"><select aria-label="Категория" value={f.category} onChange={(e:any)=>this.setFilter({category:e.target.value})}>{CAT.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select><select aria-label="Витрина" value={f.circle} onChange={(e:any)=>this.setFilter({circle:e.target.value})}><option value="global">Общий каталог</option>{this.state.circles.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select><select aria-label="Город" value={f.city} onChange={(e:any)=>this.setFilter({city:e.target.value})}><option value="all">Все города</option><option value="Воронеж">Воронеж</option><option value="Москва">Москва</option><option value="Липецк">Липецк</option></select><select aria-label="Сортировка" value={f.sort} onChange={(e:any)=>this.setFilter({sort:e.target.value})}><option value="new">Сначала новые</option><option value="cheap">Сначала дешевле</option><option value="expensive">Сначала дороже</option><option value="popular">Популярные</option></select></div>
   {this.state.filterOpen?<div className="advanced-filters"><div className="filter-field"><label>Цена от, ₽</label><input type="number" min="0" placeholder="0" value={f.minPrice} onChange={(e:any)=>this.setFilter({minPrice:e.target.value})}/></div><div className="filter-field"><label>Цена до, ₽</label><input type="number" min="0" placeholder="Любая" value={f.maxPrice} onChange={(e:any)=>this.setFilter({maxPrice:e.target.value})}/></div><div className="filter-field"><label>Состояние</label><select value={f.condition} onChange={(e:any)=>this.setFilter({condition:e.target.value})}><option value="all">Любое</option><option value="new">Новое</option><option value="excellent">Отличное</option><option value="good">Хорошее</option><option value="used">Б/у</option></select></div><div className="filter-field"><label>Тип сделки</label><select value={f.deal} onChange={(e:any)=>this.setFilter({deal:e.target.value})}><option value="all">Любой</option><option value="sell">Продажа</option><option value="swap">Обмен</option><option value="free">Бесплатно</option></select></div><button className="btn btn-soft" onClick={()=>this.setState({filters:{...DEFAULT_FILTERS},query:''})}><Icon name="reset" size={16}/>Сбросить</button></div>:null}</>;}
- renderCatalog(){const items=this.filterItems(this.state.listings);return <><div className="page-intro"><div><span className="micro">ОБЩИЙ МАРКЕТПЛЕЙС</span><h1>Каталог объявлений<span className="dot-lime">.</span></h1><p>Вещи из разных кругов — без повторов и лишнего шума.</p></div><button className="btn btn-primary" onClick={()=>this.openCreate()}><Icon name="plus" size={18}/>Разместить</button></div>{this.renderFilterbar()}<div className="results-header"><h2>Объявления <small>{items.length}</small></h2><span>Одно объявление — несколько витрин</span></div>{this.renderCards(items,'По этому запросу пока пусто')}</>;}
+ renderCatalog(){const items=this.filterItems(this.state.listings);return <><div className="page-intro"><div><span className="micro">ОБЩИЙ МАРКЕТПЛЕЙС</span><h1>Каталог объявлений<span className="dot-lime">.</span></h1><p>Вещи из разных кругов — без повторов и лишнего шума.</p></div><button className="btn btn-primary" onClick={()=>this.openCreate()}><Icon name="plus" size={18}/>Разместить</button></div>{this.state.serverCircles.length?<div className="yorvi-server-circles"><label htmlFor="yorvi-server-circle">Круг сообщества</label><select id="yorvi-server-circle" value={this.state.selectedCommunityId||''} onChange={e=>this.selectServerCircle(e.target.value||null)}><option value="">Все круги</option>{this.state.serverCircles.map(c=><option value={c.id} key={c.id}>{c.name}{c.city?' · '+c.city:''}</option>)}</select></div>:null}{this.renderFilterbar()}<div className="results-header"><h2>Объявления <small>{items.length}</small></h2><span>Одно объявление — несколько витрин</span></div>{this.renderCards(items,'По этому запросу пока пусто')}</>;}
  circleCard(c:Circle){const count=this.state.listings.filter(l=>l.placements[c.id]==='approved'&&l.status==='active').length;return <div className={'circle-card '+c.gradient} key={c.id}><div className="circle-emoji">{c.emoji}</div><div className="circle-body"><h3>{c.name}</h3><p>{c.summary}</p><div className="circle-bottom"><span><Icon name="users" size={14}/>{c.members}</span><button onClick={()=>{this.setState({activeCircle:c.id,page:'circles'});}} title="Открыть круг"><Icon name="arrow" size={19}/></button></div></div><span className="circle-decor">{count} лотов</span></div>;}
  renderCircles(){if(this.state.activeCircle){const c=this.state.circles.find(x=>x.id===this.state.activeCircle);if(!c)return null;const items=this.state.listings.filter(l=>l.status==='active'&&l.placements[c.id]==='approved');return <><button className="back-link" onClick={()=>this.setState({activeCircle:null})}><Icon name="left" size={16}/>Все круги</button><div className={'circle-detail-cover '+c.gradient}><div className="circle-detail-emoji">{c.emoji}</div><div><span className="micro">СООБЩЕСТВО YORVI</span><h1>{c.name}</h1><p>{c.summary} · {c.members} участников</p></div><button className="btn btn-dark" onClick={()=>this.toggleCircle(c.id)}>{c.isJoined?'В круге ✓':'Вступить в круг'}</button></div><div className="section-heading"><div><span className="micro">ОБЪЯВЛЕНИЯ</span><h2>В этом круге <span className="muted-count">{items.length}</span></h2></div></div>{this.renderCards(items,'Здесь пока нет одобренных объявлений')}</>;}return <><div className="page-intro"><div><span className="micro">СООБЩЕСТВА MAX</span><h1>Твои круги<span className="dot-lime">.</span></h1><p>Локальные и тематические витрины. Находи вещи среди своих.</p></div></div><div className="circles-banner"><div><span className="micro">БОЛЬШЕ ВМЕСТЕ</span><h2>Каждый круг — своя история находок.</h2><p>Присоединяйся к сообществам, в которых тебе интересно.</p></div><div className="circles-banner-icon">◎</div></div><div className="section-heading"><div><span className="micro">ИССЛЕДУЙ СООБЩЕСТВА</span><h2>Все круги</h2></div></div><div className="circles-grid">{this.state.circles.map(c=><div key={c.id} className="circle-wrap">{this.circleCard(c)}<button className={'join-circle '+(c.isJoined?'joined':'')} onClick={()=>this.toggleCircle(c.id)}>{c.isJoined?<><Icon name="check" size={15}/> Ты в круге</>:<><Icon name="plus" size={15}/> Вступить</>}</button></div>)}</div></>;}
  toggleCircle(id:string){this.setState(s=>({circles:s.circles.map(c=>c.id===id?{...c,isJoined:!c.isJoined}:c)}));}
- renderFavorites(){const fav=this.state.listings.filter(l=>this.state.favorites.includes(l.id)&&l.status==='active');return <><div className="page-intro"><div><span className="micro">ТВОИ СОХРАНЕНИЯ</span><h1>Избранное<span className="dot-lime">.</span></h1><p>Вещи, к которым хочется вернуться.</p></div></div>{this.renderCards(fav,'Здесь пока ничего нет')}</>;}
+ renderFavorites(){const fav=this.state.favoritesAuthenticated?this.state.favoriteListings:this.state.listings.filter(l=>this.state.favorites.includes(l.id)&&l.status==='active');return <><div className="page-intro"><div><span className="micro">ТВОИ СОХРАНЕНИЯ</span><h1>Избранное<span className="dot-lime">.</span></h1><p>Вещи, к которым хочется вернуться.</p></div></div>{!this.state.favoritesAuthenticated&&!import.meta.env.DEV?<p>Войдите через MAX, чтобы синхронизировать избранное на всех устройствах.</p>:null}{this.renderCards(fav,'Здесь пока ничего нет')}</>;}
  renderMy(){const mine=this.state.listings.filter(x=>x.mine);return <><div className="page-intro"><div><span className="micro">ЛИЧНЫЙ КАБИНЕТ</span><h1>Мои объявления<span className="dot-lime">.</span></h1><p>Управляй товарами. Изменения статуса действуют во всех кругах.</p></div><button className="btn btn-primary" onClick={()=>this.openCreate()}><Icon name="plus" size={18}/>Новое объявление</button></div><div className="stats-grid"><div className="stat-card"><span>Всего объявлений</span><strong>{mine.length}</strong><Icon name="bag"/></div><div className="stat-card"><span>Активных</span><strong>{mine.filter(l=>l.status==='active').length}</strong><Icon name="bolt"/></div><div className="stat-card"><span>Продано</span><strong>{mine.filter(l=>l.status==='sold').length}</strong><Icon name="check"/></div><div className="stat-card"><span>Просмотры</span><strong>{fmt(mine.reduce((s,l)=>s+l.views,0))}</strong><Icon name="eye"/></div></div><div className="section-heading"><div><h2>Мои товары</h2></div></div><div className="manage-list">{mine.map(l=><div className="manage-item" key={l.id}><button className={'manage-cover '+l.art} onClick={()=>this.openListing(l.id)}>{demoPhoto(l)?<img src={demoPhoto(l)} alt={'Иллюстрация: '+l.title}/>:<span>{l.emoji}</span>}</button><div className="manage-info"><b>{l.title}</b><span>{money(l.price)} · {l.city}</span><div className="manage-tags"><span className={'status '+l.status}>{l.status==='active'?'Активно':l.status==='sold'?'Продано':l.status==='reserved'?'Резерв':'Архив'}</span><span>{Object.entries(l.placements).filter(([c,s])=>c!=='global'&&s==='approved').length} круг(а)</span>{Object.values(l.placements).includes('pending')?<span className="status pending">Есть проверка</span>:null}</div></div><div className="manage-actions"><button title="Изменить" onClick={()=>this.openCreate(l.id)}><Icon name="edit" size={18}/></button><button onClick={()=>this.markStatus(l.id,l.status==='sold'?'active':'sold')} title={l.status==='sold'?'Вернуть в продажу':'Отметить проданным'}><Icon name={l.status==='sold'?'refresh':'check'} size={18}/></button><button title="Открыть" onClick={()=>this.openListing(l.id)}><Icon name="arrow" size={18}/></button></div></div>)}</div></>;}
  renderModeration(){const mod=this.state.modCircle;const items=this.state.listings.filter(l=>l.placements[mod]&&l.placements[mod]!=='rejected'&&(this.state.modTab==='all'||l.placements[mod]===this.state.modTab));const pending=this.state.listings.filter(l=>l.placements[mod]==='pending').length;return <><div className="page-intro"><div><span className="micro">КАБИНЕТ АДМИНИСТРАТОРА · ДЕМО</span><h1>Модерация<span className="dot-lime">.</span></h1><p>Каждый круг решает, какие объявления показывать у себя.</p></div><span className="demo-badge">Демо-роль модератора</span></div><div className="moderation-toolbar"><div><label>Витрина</label><select value={mod} onChange={(e:any)=>this.setState({modCircle:e.target.value,modTab:'pending'})}>{this.state.circles.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select></div><div className="moderation-tabs"><button className={this.state.modTab==='pending'?'active':''} onClick={()=>this.setState({modTab:'pending'})}>На проверке <b>{pending}</b></button><button className={this.state.modTab==='approved'?'active':''} onClick={()=>this.setState({modTab:'approved'})}>Одобрено</button><button className={this.state.modTab==='all'?'active':''} onClick={()=>this.setState({modTab:'all'})}>Все</button></div></div><div className="review-list">{items.length?items.map(l=><div className="review-item" key={l.id}><div className={'review-art '+l.art}>{demoPhoto(l)?<img src={demoPhoto(l)} alt={'Иллюстрация: '+l.title}/>:l.emoji}</div><div className="review-content"><b>{l.title}</b><span>{money(l.price)} · {l.seller}</span><div className="review-description">{l.description}</div><small>Витрина: {this.state.circles.find(c=>c.id===mod)?.name} · {l.placements[mod]==='pending'?'Ожидает проверки':'Одобрено'}</small></div><div className="review-actions">{l.placements[mod]==='pending'?<><button className="approve" onClick={()=>this.moderate(l.id,mod,'approved')}><Icon name="check" size={17}/>Одобрить</button><button className="reject" onClick={()=>this.moderate(l.id,mod,'rejected')}><Icon name="close" size={17}/>Отклонить</button></>:<button className="reject" onClick={()=>this.moderate(l.id,mod,'pending')}>На проверку</button>}</div></div>):<div className="empty-state slim"><div className="empty-glyph">✓</div><h3>На проверке пусто</h3><p>Все объявления в выбранной вкладке обработаны.</p></div>}</div><div className="notice"><Icon name="info"/><p>В реальном продукте администратор сможет модерировать только свои сообщества. В прототипе переключатель доступен для тестирования сценариев.</p></div></>;}
  renderKit(){return <><div className="page-intro"><div><span className="micro">YORVI DESIGN SYSTEM · 1.4</span><h1>Фирменный стиль<span className="dot-lime">.</span></h1><p>Единые компоненты для веб-приложения и будущего Mini App в MAX.</p></div></div><div className="kit-hero"><div><Brand/><h2>Находи своё.</h2><p>Честный, быстрый и человечный маркетплейс.</p></div><img src="assets/yori-raccoon.webp" alt="Маскот Йори"/></div><div className="section-heading"><h2>Палитра</h2></div><div className="swatch-grid">{[{name:'Графит',hex:'#0D0F12',dark:true},{name:'Лайм',hex:'#C8FF4D',dark:false},{name:'Молоко',hex:'#F7F8F5',dark:false},{name:'Поверхность',hex:'#FFFFFF',dark:false},{name:'Серый',hex:'#8B9099',dark:true}].map(c=><div className="swatch-card" key={c.hex}><div style={{background:c.hex,color:c.dark?'white':'#171919'}}>{c.name}</div><b>{c.hex}</b></div>)}</div><div className="section-heading"><h2>Компоненты интерфейса</h2></div><div className="kit-elements"><button className="btn btn-primary" onClick={()=>this.say('Основное действие')}>Основная кнопка</button><button className="btn btn-secondary" onClick={()=>this.say('Вторичное действие')}>Вторичная</button><button className="btn btn-dark" onClick={()=>this.say('Контрастная кнопка')}>Контрастная</button><span className="status active">Активно</span><span className="status pending">На проверке</span><span className="status sold">Продано</span></div><div className="section-heading"><h2>Йори — твой помощник</h2></div><div className="mascot-kit"><img src="assets/yori-raccoon.webp" alt="Йори спереди"/><div><span className="micro">УМНЫЙ · ДРУЖЕЛЮБНЫЙ · НЕ НАВЯЗЧИВЫЙ</span><h3>Привет! Я Йори — енот YORVI!</h3><p>Подскажу, как разместить вещь и найти нужное рядом. Енот в лаймовом худи и чёрной кепке с буквой Y — фирменный персонаж YORVI. Он помогает продавать и находить вещи рядом.</p><button className="btn btn-secondary" onClick={()=>this.setState({helpOpen:true})}>Познакомиться <Icon name="arrow" size={15}/></button></div></div><div className="notice"><Icon name="info"/><p>Это UI Kit и интерактивный прототип. Изображения и объявления демонстрационные; сервер, платежи, реальные роли и MAX API не подключены.</p></div></>;}
