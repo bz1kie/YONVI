@@ -35,3 +35,14 @@ jobs:
       - run: node scripts/integration-test.mjs
       - run: node scripts/integration-write-test.mjs
       - run: node scripts/integration-max-auth-test.mjs
+      - name: Start isolated MinIO for photo integration
+        run: |
+          docker run -d --name yorvi-minio-ci \
+            -p 127.0.0.1:9000:9000 \
+            -e MINIO_ROOT_USER=yorvi_local_access \
+            -e MINIO_ROOT_PASSWORD=yorvi_local_secret_change_before_deploy \
+            minio/minio:latest server /data --address ":9000"
+      - name: Create private test photo bucket
+        run: node scripts/setup-minio.mjs
+      - name: Verify signed upload, gallery and sold privacy
+        run: node scripts/integration-photo-minio-test.mjs
