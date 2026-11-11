@@ -15,7 +15,7 @@ async function json<T>(response:Response):Promise<T>{
  * MAX Bridge's initDataUnsafe is display-only and MUST NOT be trusted.
  * The backend performs HMAC verification with MAX_BOT_TOKEN.
  */
-export default function MaxAuthBadge(){
+export default function MaxAuthBadge({onLogin}:{onLogin?:()=>void}){
  const [user,setUser]=useState<SessionUser|null>(null);
  const [status,setStatus]=useState<'loading'|'signed-in'|'outside-max'|'error'>('loading');
  const [error,setError]=useState('');
@@ -51,5 +51,5 @@ export default function MaxAuthBadge(){
   <button type="button" aria-label="Выйти из LAVOSE" onClick={()=>void logout()}>Выйти</button>
  </div>;
  if(status==='error')return <button type="button" className="max-auth-badge" title={error} onClick={()=>void launch()}>MAX · ошибка входа ↻</button>;
- return <span className="max-auth-badge" title="Откройте LAVOSE через Mini App бота MAX для входа">Вход через MAX</span>;
+ return <button type="button" className="max-auth-badge login-trigger" onClick={onLogin}>Вход через MAX</button>;
 }
