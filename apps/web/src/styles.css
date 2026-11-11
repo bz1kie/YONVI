@@ -388,3 +388,28 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
  .lavose-catalog-tabs button.active{background:var(--lime);color:#101410}
  .lavose-location-prompt{padding:16px}
 }
+
+
+/* Desktop V7: closer category, hero and MAX artwork proportions */
+@media(min-width:1025px){
+ .lavose-max-promo{isolation:isolate}
+ .lavose-max-promo h2,.lavose-max-promo p{position:relative;z-index:2}
+ .lavose-max-phone{position:absolute;z-index:1;right:9%;bottom:67px;width:108px;height:164px;border:7px solid #323b41;border-radius:21px;background:#080d10;box-shadow:-14px 12px 30px #000a,0 0 0 2px #6b7679;transform:rotate(13deg);overflow:hidden}
+ .lavose-max-phone-camera{position:absolute;top:5px;left:39%;width:23%;height:5px;border-radius:9px;background:#323c41;z-index:2}
+ .lavose-max-phone-screen{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:radial-gradient(circle at 60% 75%,#354a12,#101618 68%);color:#fff}
+ .lavose-max-phone-logo{display:grid;place-items:center;background:#c8ff28;color:#0a0d0e;width:48px;height:48px;border-radius:15px;font-size:34px;font-weight:1000}
+ .lavose-max-phone-screen strong{font-size:15px}
+ .lavose-max-phone-screen small{font-size:9px;color:#c9d4ca}
+ .lavose-max-promo>a{z-index:3}
+ .catalog-screen .catalog-categories{gap:10px}
+ .catalog-screen .catalog-categories button{min-height:122px;justify-content:space-around;padding:10px 6px}
+ .lavose-category-emoji{font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;font-size:58px;height:72px;line-height:1.1;filter:drop-shadow(0 9px 7px #0009)}
+ .catalog-screen .catalog-categories button b{font-size:13px;line-height:1.15;min-height:15px}
+ .lavose-feature-mascot{left:38%;width:30%;height:111%;bottom:-17%;-webkit-mask-image:radial-gradient(ellipse 61% 67% at 52% 51%,black 54%,transparent 99%);mask-image:radial-gradient(ellipse 61% 67% at 52% 51%,black 54%,transparent 99%)}
+ .lavose-feature-copy{max-width:40%}
+ .lavose-feature-benefits{width:27%}
+}
+@media(min-width:1025px) and (max-width:1180px){
+ .lavose-max-phone{opacity:.55;right:4%;width:84px;height:140px}
+ .lavose-category-emoji{font-size:48px}
+}
