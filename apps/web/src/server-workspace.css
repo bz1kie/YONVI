@@ -15,3 +15,8 @@
 .sw-photo-chips{display:flex;flex-wrap:wrap;gap:6px}
 .sw-photo-chips span{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;border-radius:9px;border:1px solid var(--border);padding:5px 8px}
 .sw-upload-progress{font-size:13px;color:var(--text);background:var(--surface-alt);padding:10px 13px;border-radius:10px}
+
+.server-workspace,.sw-panel,.sw-fields,.sw-fields>label,.sw-photo-picker,.sw-circles{min-width:0}
+.sw-fields input,.sw-fields select,.sw-fields textarea,.sw-circles input:not([type=checkbox]){min-width:0;max-width:100%}
+.sw-photo-picker>input{width:100%;min-width:0}
+.sw-alert,.sw-warning,.sw-placement,.sw-listing h3{overflow-wrap:anywhere}

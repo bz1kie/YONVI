@@ -152,3 +152,18 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .yorvi-gallery-thumbs button.active{border-color:var(--focus);box-shadow:0 0 0 2px rgba(139,195,25,.15)}
 .yorvi-gallery-thumbs img{width:100%;height:100%;object-fit:cover;border-radius:7px}
 @media(max-width:700px){.yorvi-gallery .detail-art{min-height:240px}.yorvi-gallery-thumbs button{width:54px;height:54px;flex-basis:54px}}
+
+/* Fit compact MAX Web windows without pushing the document sideways. */
+.main-shell,.page-content,.top-left,.top-actions{min-width:0}
+.max-auth-badge{min-width:0}
+.max-auth-badge span{min-width:0}
+.max-auth-badge button{flex-shrink:0}
+@media(max-width:480px){
+ .topbar{padding-inline:12px;gap:8px}
+ .top-left{flex:0 0 auto}
+ .top-actions{flex:1;justify-content:flex-end;gap:6px}
+ .top-actions .location-chip{display:none}
+ .max-auth-badge{max-width:135px;padding:6px;gap:5px}
+ .mobile-logo .brand-word{font-size:24px}
+ .top-actions>.icon-button{flex-shrink:0}
+}
