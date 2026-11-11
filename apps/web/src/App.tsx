@@ -19,7 +19,7 @@ interface Circle { id: string; name: string; summary: string; emoji: string; mem
 interface Draft { title: string; price: string; category: string; city: string; condition: Condition; deal: DealType; description: string; emoji: string; art: string; image?: string; circles: string[]; }
 interface Filters {category: string; city: string; minPrice: string; maxPrice: string; condition: string; deal: string; sort: string; circle: string;}
 interface State {
-  theme: 'light' | 'dark'; page: Page; listings: Listing[]; circles: Circle[]; favorites: string[];
+  createRequest: number; theme: 'light' | 'dark'; page: Page; listings: Listing[]; circles: Circle[]; favorites: string[];
   query: string; filters: Filters; filterOpen: boolean; selectedListing: string | null;
   activeCircle: string | null; createOpen: boolean; editId: string | null;
   step: number; draft: Draft; modCircle: string; modTab: 'pending' | 'approved' | 'all';
@@ -133,7 +133,7 @@ const navigation:{id:Page,name:string,icon:string}[] = [
 const initState = ():State => {
  const saved=safeGet(STORE_KEY);
  return {
-  theme: saved&&saved.theme==='dark'?'dark':'light',page:'home',
+  createRequest:0,theme: saved&&saved.theme==='dark'?'dark':'light',page:'home',
   listings: import.meta.env.DEV?(saved&&Array.isArray(saved.listings)?saved.listings:SEED):[],
   circles:saved&&Array.isArray(saved.circles)?saved.circles:CIRCLES_BASE,
   favorites:import.meta.env.DEV&&saved&&Array.isArray(saved.favorites)?saved.favorites:[],
@@ -232,7 +232,7 @@ class App extends React.Component<{},State> {
 }
  switchTheme(){this.setState(s=>({theme:s.theme==='light'?'dark':'light'}));}
  openCreate(editId:string|null=null){
-  if(!import.meta.env.DEV){this.go('server');return;}
+  if(!import.meta.env.DEV){this.setState(s=>({page:'server',createRequest:s.createRequest+1}));window.scrollTo({top:0});return;}
   const found=this.state.listings.find(x=>x.id===editId);
   const draft:Draft=found?{title:found.title,price:String(found.price),category:found.category,city:found.city,condition:found.condition,deal:found.deal,description:found.description,emoji:found.emoji,art:found.art,image:found.image,circles:Object.keys(found.placements)}:EMPTY_DRAFT();
   this.setState({createOpen:true,editId,step:1,draft,selectedListing:null,activeCircle:null});
@@ -344,6 +344,6 @@ class App extends React.Component<{},State> {
  </div></div>;}
  renderHelp(){return <div className="modal-layer" onMouseDown={(e:any)=>{if(e.target===e.currentTarget)this.setState({helpOpen:false});}}><div className="help-modal"><button className="modal-close" onClick={()=>this.setState({helpOpen:false})}><Icon name="close"/></button><img src="assets/yori-raccoon.webp" alt="Лаврик приветствует"/><span className="micro">ЗНАКОМЬСЯ</span><h2>Лаврик на связи! <span>✦</span></h2><p>Я — маскот LAVOSE. Помогу разобраться с объявлениями, кругами и находками. Пока я живу в демо-прототипе, но скоро появлюсь и в боте MAX.</p><div className="help-buttons"><button className="btn btn-primary" onClick={()=>{this.setState({helpOpen:false});this.openCreate();}}>Разместить вещь</button><button className="btn btn-secondary" onClick={()=>{this.setState({helpOpen:false});this.go('circles');}}>Посмотреть круги</button></div></div></div>;}
  renderMobileNav(){return <nav className="mobile-nav">{[{id:'home',name:'Главная',icon:'home'},{id:'catalog',name:'Поиск',icon:'search'},{id:'create',name:'Продать',icon:'plus'},{id:'circles',name:'Круги',icon:'users'},{id:'server',name:'Профиль',icon:'user'}].map(n=><button className={(this.state.page===n.id?'active':'')+(n.id==='create'?' mobile-create':'')} key={n.id} onClick={()=>n.id==='create'?this.openCreate():this.go(n.id as Page)}><Icon name={n.icon} size={21}/><span>{n.name}</span></button>)}</nav>;}
- render(){const {page}=this.state;return <div className="app-shell">{this.renderSidebar()}<div className="main-shell">{this.renderHeader()}<main className="page-content" id="main"><div className={'api-status api-'+this.state.apiStatus} role="status">{this.state.apiStatus==='checking'?'Проверяем подключение к серверу…':this.state.apiStatus==='live'?`Подключено к API · ${this.state.serverCount} объявлений из PostgreSQL (просмотр)` :this.state.apiStatus==='error'?'Каталог временно недоступен. Попробуйте обновить страницу.':'Демо-режим · объявления сохраняются только в этом браузере'}</div>{page==='home'?this.renderHome():page==='catalog'?this.renderCatalog():page==='circles'?this.renderCircles():page==='favorites'?this.renderFavorites():page==='my'?this.renderMy():page==='moderation'?this.renderModeration():page==='server'?<ServerWorkspace/>:this.renderKit()}</main><footer className="app-footer"><span>© 2026 LAVOSE. По лапкам — и по рукам! 🤝</span><span>LAVOSE 2.3 alpha · вход MAX по защищённой сессии · платежи ещё не подключены</span><button onClick={()=>this.resetDemo()}><Icon name="reset" size={13}/>Сбросить демо</button></footer></div>{this.renderMobileNav()}{this.state.selectedListing?this.renderDetails():null}{this.state.createOpen?this.renderCreate():null}{this.state.helpOpen?this.renderHelp():null}{this.state.toast?<div className="toast"><Icon name="check" size={16}/>{this.state.toast}</div>:null}</div>;}
+ render(){const {page}=this.state;return <div className="app-shell">{this.renderSidebar()}<div className="main-shell">{this.renderHeader()}<main className="page-content" id="main"><div hidden={this.state.apiStatus==='live'} className={'api-status api-'+this.state.apiStatus} role="status">{this.state.apiStatus==='checking'?'Проверяем подключение к серверу…':this.state.apiStatus==='live'?`Подключено к API · ${this.state.serverCount} объявлений из PostgreSQL (просмотр)` :this.state.apiStatus==='error'?'Каталог временно недоступен. Попробуйте обновить страницу.':'Демо-режим · объявления сохраняются только в этом браузере'}</div>{page==='home'?this.renderHome():page==='catalog'?this.renderCatalog():page==='circles'?this.renderCircles():page==='favorites'?this.renderFavorites():page==='my'?this.renderMy():page==='moderation'?this.renderModeration():page==='server'?<ServerWorkspace createRequest={this.state.createRequest}/>:this.renderKit()}</main><footer className="app-footer"><span>© 2026 LAVOSE. По лапкам — и по рукам! 🤝</span><span>LAVOSE 2.3 alpha · вход MAX по защищённой сессии · платежи ещё не подключены</span><button onClick={()=>this.resetDemo()}><Icon name="reset" size={13}/>Сбросить демо</button></footer></div>{this.renderMobileNav()}{this.state.selectedListing?this.renderDetails():null}{import.meta.env.DEV&&this.state.createOpen?this.renderCreate():null}{this.state.helpOpen?this.renderHelp():null}{this.state.toast?<div className="toast"><Icon name="check" size={16}/>{this.state.toast}</div>:null}</div>;}
 }
 export default App;

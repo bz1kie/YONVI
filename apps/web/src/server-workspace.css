@@ -20,3 +20,17 @@
 .sw-fields input,.sw-fields select,.sw-fields textarea,.sw-circles input:not([type=checkbox]){min-width:0;max-width:100%}
 .sw-photo-picker>input{width:100%;min-width:0}
 .sw-alert,.sw-warning,.sw-placement,.sw-listing h3{overflow-wrap:anywhere}
+
+/* Compact profile: listings first, creation form only on demand. */
+.server-workspace{gap:12px;padding-bottom:72px;width:100%;max-width:100%}
+.sw-heading{align-items:center;flex-direction:row;gap:8px}
+.sw-heading h1{font-size:24px;margin:0;overflow-wrap:anywhere}
+.sw-heading .sw-btn{font-size:12px;padding:8px 10px;min-height:36px}
+.sw-panel{padding:12px;border-radius:14px}
+.sw-panel-head{margin-bottom:12px}
+.sw-panel-head h2{font-size:18px}
+.sw-tabs button{padding:10px 8px;font-size:12px}
+.sw-listing{padding:12px}
+.sw-fields{gap:12px}
+.sw-fields label{gap:5px}
+.sw-status{white-space:normal}

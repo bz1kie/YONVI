@@ -50,7 +50,9 @@ async function api<T>(path:string, user:string, init:RequestInit = {}, authentic
  }
  return payload as T;
 }
-export default function ServerWorkspace() {
+export default function ServerWorkspace({createRequest=0}:{createRequest?:number}) {
+ const [formOpen,setFormOpen]=useState(createRequest>0);
+ useEffect(()=>{if(createRequest>0)setFormOpen(true);},[createRequest]);
  const [user,setUser]=useState(()=>{try{return localStorage.getItem(USER_STORAGE)||DEV_USER;}catch{return DEV_USER;}});
  const [sessionUser,setSessionUser]=useState<{id:string;nickname:string}|null>(null);
  const [authChecked,setAuthChecked]=useState(false);
@@ -98,7 +100,7 @@ export default function ServerWorkspace() {
    setChosenCircles(previous=>previous.length?previous.filter(id=>available.some(c=>c.id===id)):available.length?[available[0].id]:[]);
    const own=await api<{items:MyListing[]}>('/api/me/listings',user,{},Boolean(sessionUser));
    setMine(own.items||[]);
-   notify('info', 'Данные получены из PostgreSQL через Fastify.');
+   setAlert(null);
   }catch(error){notify('error',errorText(error));setMine([]);}
   finally{setLoading(false);}
  },[user,sessionUser]);
@@ -145,7 +147,7 @@ export default function ServerWorkspace() {
     if(!editId){
       await api(`/api/listings/${listingId}/submit`,user,{method:'POST',body:JSON.stringify({communityIds:chosenCircles})},Boolean(sessionUser));
     }
-    setDraft(startDraft);setEditId(null);setPhotoFiles([]);completedPhotos.current=0;setPendingDraftId(null);
+    setDraft(startDraft);setEditId(null);setPhotoFiles([]);completedPhotos.current=0;setPendingDraftId(null);setFormOpen(false);
   },editId?'Изменения сохранены. Публикация отправлена на повторную проверку.':'Объявление создано и отправлено модераторам.');
  }
  async function uploadPhoto(listingId:string, file:File){
@@ -173,7 +175,7 @@ export default function ServerWorkspace() {
  }
  function edit(l:MyListing){
   if(l.status!=='draft'&&l.status!=='active')return;
-  setEditId(l.id);setPhotoFiles([]);completedPhotos.current=0;setPendingDraftId(null);setDraft({title:l.title,description:l.description,price:String(Number(l.price_kopecks)/100),city:l.city,category:l.category});
+  setFormOpen(true);setEditId(l.id);setPhotoFiles([]);completedPhotos.current=0;setPendingDraftId(null);setDraft({title:l.title,description:l.description,price:String(Number(l.price_kopecks)/100),city:l.city,category:l.category});
   window.scrollTo({top:0,behavior:'smooth'});
  }
  function toggleCircle(id:string){setChosenCircles(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id]);}
@@ -191,12 +193,11 @@ export default function ServerWorkspace() {
  const field=(key:keyof Draft,value:string)=>setDraft(prev=>({...prev,[key]:value}));
  return <section className="server-workspace">
   <div className="sw-heading">
-   <div><span className="sw-kicker">LAVOSE · МОЙ ПРОФИЛЬ</span><h1>Личный кабинет<span>.</span></h1>
-     <p>Мои объявления, сообщества и модерация — данные из PostgreSQL.</p></div>
+   <div><h1>{sessionUser?.nickname||'Профиль'}</h1></div>
    <button className="sw-btn sw-secondary" type="button" disabled={busy||loading} onClick={()=>void fetchData()}>↻ Обновить</button>
   </div>
   {sessionUser?
-    <div className="sw-alert sw-success">Вход подтверждён через MAX: <b>{sessionUser.nickname}</b>. Все изменения сохраняются на сервере.</div>:
+    null:
     import.meta.env.DEV?<div className="sw-warning"><b>Локальная разработка.</b> Для тестирования используйте тестовую БД и ALLOW_DEMO_AUTH=true. Это не реальный вход MAX.</div>:
     <div className="sw-warning"><b>Нужен вход через MAX.</b> Откройте Лавось из мини-приложения MAX. Без подтверждённой сессии действия с объявлениями недоступны.</div>}
   {!sessionUser&&!import.meta.env.DEV?<div className="sw-panel"><h2>Войдите через MAX</h2><p>Личный кабинет станет доступен после подтверждения учётной записи.</p><button className="sw-btn sw-secondary" onClick={()=>void refreshAuth()}>Проверить вход</button></div>:<>
@@ -208,11 +209,12 @@ export default function ServerWorkspace() {
   {alert&&<div role="status" className={'sw-alert sw-'+alert.kind}>{alert.text}</div>}
   <nav className="sw-tabs" aria-label="Раздел серверной мастерской">
    <button className={tab==='listings'?'active':''} onClick={()=>setTab('listings')}>Мои объявления ({mine.length})</button>
-   <button className={tab==='moderation'?'active':''} onClick={()=>setTab('moderation')}>Модерация кругов</button>
+   <button className={tab==='moderation'?'active':''} onClick={()=>setTab('moderation')}>Проверка</button>
   </nav>
   {tab==='listings'?<>
-   <form className="sw-panel" onSubmit={e=>void save(e)}>
-    <div className="sw-panel-head"><h2>{editId?'Изменить объявление':'Разместить объявление'}</h2><span>Данные сохраняются в PostgreSQL</span></div>
+   <button type="button" className="sw-btn sw-primary" onClick={()=>setFormOpen(v=>!v)}>{formOpen?'Закрыть форму':'+ Разместить объявление'}</button>
+   {formOpen&&<form className="sw-panel" onSubmit={e=>void save(e)}>
+    <div className="sw-panel-head"><h2>{editId?'Изменить объявление':'Разместить объявление'}</h2></div>
     <div className="sw-fields">
      <label>Название товара<input required minLength={3} maxLength={120} value={draft.title} onChange={e=>field('title',e.target.value)} placeholder="Например, ноутбук ThinkPad"/></label>
      <label>Цена, ₽<input required type="number" min={0} step=".01" value={draft.price} onChange={e=>field('price',e.target.value)}/></label>
@@ -241,11 +243,12 @@ export default function ServerWorkspace() {
     {uploadProgress?<p role="status" className="sw-upload-progress">Загружаем {uploadProgress}</p>:null}
     {pendingDraftId&&!editId?<p className="sw-upload-progress">Черновик сохранён. Повторная отправка не создаст дубликат.</p>:null}
     <div className="sw-actions"><button className="sw-btn sw-primary" disabled={busy||loading||(!sessionUser&&!uuidOrEmpty(user))} type="submit">{busy?'Сохраняем…':editId?'Сохранить и проверить заново':'Создать и отправить'}</button>{editId&&<button className="sw-btn sw-secondary" type="button" onClick={()=>{setEditId(null);setPendingDraftId(null);setPhotoFiles([]);completedPhotos.current=0;setDraft(startDraft);}}>Отмена</button>}</div>
-   </form>
+   </form>}
    <div className="sw-panel">
     <div className="sw-panel-head"><h2>Мои объявления</h2><span>{loading?'Обновление…':mine.length+' записей'}</span></div>
     {mine.length?<div className="sw-list">{mine.map(l=><article className="sw-listing" key={l.id}>
-      <div className="sw-item-top">{l.photo_url?<img src={l.photo_url} alt={"Фотография "+l.title} className="sw-cover" loading="lazy"/>:null}<div><h3>{l.title}</h3><p>{l.city} · {rub(l.price_kopecks)}</p></div><span className={'sw-status '+l.status}>{statusText[l.status]||l.status}</span></div>
+      <div className="sw-item-top">{l.photo_url?<img src={l.photo_url} alt={"Фотография "+l.title} className="sw-cover" loading="lazy"/>:null}<div><h3>{l.title}</h3><p>{l.city} · {rub(l.price_kopecks)}</p></div><span className={'sw-status '+l.status}>{l.status==='active'&&!l.placements.some(p=>p.status==='approved')?'На проверке':statusText[l.status]||l.status}</span></div>
+      {l.placements.some(p=>p.status==='pending')?<p>Ожидает одобрения владельцем круга. После проверки появится в каталоге.</p>:null}
       <div className="sw-placement">{(l.placements||[]).map(p=><span key={p.communityId}>{communities.find(c=>c.id===p.communityId)?.name||'Круг'} · {statusText[p.status]||p.status}</span>)}</div>
       <div className="sw-actions">
        {(l.status==='draft'||l.status==='active')&&<button className="sw-btn sw-secondary" disabled={busy} onClick={()=>edit(l)}>Редактировать</button>}

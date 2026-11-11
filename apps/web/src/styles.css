@@ -167,3 +167,19 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
  .mobile-logo .brand-word{font-size:24px}
  .top-actions>.icon-button{flex-shrink:0}
 }
+
+.api-status[hidden]{display:none}
+@media(max-width:680px){
+ .page-content{padding:14px 12px 90px;max-width:100%;width:100%;box-sizing:border-box}
+ .main-shell{width:100%;max-width:100%;margin-left:0}
+ .app-shell{max-width:100%}
+ .topbar{flex-wrap:wrap;height:auto;min-height:56px;padding:8px 12px;gap:6px}
+ .top-left{max-width:40%}
+ .top-actions{min-width:0;flex:1;gap:5px;justify-content:flex-end}
+ .top-actions .location-chip{display:none}
+ .mobile-logo .brand-word{font-size:22px}
+ .max-auth-badge{max-width:120px}
+ .hero{min-height:210px;padding:20px}
+ .hero h1{font-size:28px}
+ .hero-foot,.eyebrow,.bottom-promo,.app-footer{display:none}
+}
