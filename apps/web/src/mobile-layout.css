@@ -19,3 +19,15 @@
  .modal-layer{padding:0}.detail-modal{max-height:100dvh;height:100dvh;border-radius:0}.detail-info{padding:16px 16px 115px}.detail-cta{position:fixed;bottom:0;left:0;right:0;margin:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:var(--surface);z-index:4;display:flex;flex-wrap:nowrap}.detail-cta>.btn:first-child{min-width:0;flex:1;font-size:13px;padding:10px}.detail-cta>.btn:nth-child(2){flex:0 0 auto;font-size:0;min-width:44px;padding:10px}.detail-cta>.btn:nth-child(2)>svg{width:20px}.detail-cta>.btn:last-child{min-width:42px}.detail-art{height:auto;aspect-ratio:1.2;min-height:220px}.detail-note{font-size:11px}.app-footer{display:none}
 }
 @media(max-width:350px){.mobile-nav button{font-size:9px}.product-price{font-size:16px}.product-info h3{font-size:12px}.catalog-categories button{min-width:70px}.results-header h1{font-size:16px}.favorites-list .product-art{width:92px;min-width:92px;height:92px}}
+
+/* Original LAVOSE category art: one cached transparent sprite for eight buttons. */
+.catalog-categories .category-art{display:block;width:64px;height:64px;background-image:url('/assets/category-icons-v1.webp');background-repeat:no-repeat;background-size:400% 200%;flex-shrink:0}
+.catalog-categories .category-art-all{background-position:0% 0%}
+.catalog-categories .category-art-electronics{background-position:33.333333% 0%}
+.catalog-categories .category-art-gaming{background-position:66.666667% 0%}
+.catalog-categories .category-art-fashion{background-position:100% 0%}
+.catalog-categories .category-art-home{background-position:0% 100%}
+.catalog-categories .category-art-transport{background-position:33.333333% 100%}
+.catalog-categories .category-art-hobby{background-position:66.666667% 100%}
+.catalog-categories .category-art-auto{background-position:100% 100%}
+@media(max-width:700px){.catalog-categories .category-art{width:52px;height:52px}.catalog-categories button{min-width:84px;padding:8px 8px 10px;gap:5px}}
