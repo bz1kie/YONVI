@@ -1,3 +1,4 @@
+import {conditionSchema,attributesSchema} from './listing-details.js';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Pool } from 'pg';
 import { z } from 'zod';
@@ -11,6 +12,7 @@ const editSchema = z.object({
   title: z.string().trim().min(3).max(120),
   description: z.string().max(5000),
   priceKopecks: z.number().int().nonnegative().safe(),
+  itemCondition:conditionSchema,attributes:attributesSchema.optional(),
 }).strict();
 
 /**
@@ -23,7 +25,7 @@ export function registerMarketplaceRoutes(app: FastifyInstance, pool: Pool, auth
     const userId = auth(request);
     if (!userId) return reply.code(401).send({ error: 'Authentication required' });
     const { rows } = await pool.query(
-      `SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.status,l.created_at,
+      `SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.item_condition,l.attributes,l.status,l.created_at,
         (SELECT '/api/media/' || m.id::text FROM listing_media m WHERE m.listing_id=l.id AND m.upload_status='ready' ORDER BY m.sort_order,m.created_at LIMIT 1) AS photo_url,
         COALESCE(json_agg(json_build_object('communityId',p.community_id,'status',p.status,'channelStatus',mp.status,'channelError',mp.last_error))
         FILTER(WHERE p.id IS NOT NULL),'[]'::json) AS placements
@@ -116,9 +118,9 @@ export function registerMarketplaceRoutes(app: FastifyInstance, pool: Pool, auth
         return reply.code(409).send({ error: 'Listing cannot be edited' });
       }
       const { rows } = await client.query(
-        `UPDATE listings SET title=$3,description=$4,price_kopecks=$5,updated_at=now()
+        `UPDATE listings SET title=$3,description=$4,price_kopecks=$5,item_condition=CASE WHEN $6::boolean THEN $7::text ELSE item_condition END,attributes=COALESCE($8::jsonb,attributes),updated_at=now()
            WHERE id=$1 AND seller_id=$2 RETURNING id,title,description,price_kopecks,status`,
-        [id,userId,d.title,d.description,d.priceKopecks],
+        [id,userId,d.title,d.description,d.priceKopecks,d.itemCondition!==undefined,d.itemCondition||null,d.attributes===undefined?null:JSON.stringify(d.attributes)],
       );
       // Material changes revoke approval to prevent post-moderation bait-and-switch.
       await client.query(

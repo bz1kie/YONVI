@@ -1,3 +1,4 @@
+import {conditionSchema,attributesSchema} from './listing-details.js';
 import { sendConversationNotifications } from './conversation-notifications.js';
 import { registerConversationRoutes } from './conversation-routes.js';
 import { publishApproved } from './max-publish.js';
@@ -45,7 +46,7 @@ app.get('/api/listings',async(req,reply)=>{
   const q=z.object({city:z.string().max(80).optional(),category:z.string().max(50).optional(),search:z.string().max(100).optional(),communityId:z.string().uuid().optional(),limit:z.coerce.number().int().min(1).max(50).default(20)}).safeParse(req.query);
   if(!q.success)return reply.code(400).send({error:'Invalid query'});
   const {city,category,search,communityId,limit}=q.data;
-  const {rows}=await pool.query(`SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.created_at, u.nickname AS seller_name,u.max_contact_url AS seller_contact_url, media.photo_url FROM listings l JOIN users u ON u.id=l.seller_id
+  const {rows}=await pool.query(`SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.item_condition,l.attributes,l.created_at, u.nickname AS seller_name,u.max_contact_url AS seller_contact_url, media.photo_url FROM listings l JOIN users u ON u.id=l.seller_id
   LEFT JOIN LATERAL (
     SELECT '/api/media/' || m.id::text AS photo_url
     FROM listing_media m WHERE m.listing_id=l.id AND m.upload_status='ready'
@@ -62,26 +63,38 @@ app.get('/api/listings',async(req,reply)=>{
 app.get('/api/listings/:id',async(req,reply)=>{
   const id=(req.params as {id:string}).id;
   if(!z.string().uuid().safeParse(id).success)return reply.code(400).send({error:'Invalid id'});
-  const {rows}=await pool.query(`SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.created_at,u.nickname AS seller_name,u.max_contact_url AS seller_contact_url, media.photo_url,
+  const {rows}=await pool.query(`SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.item_condition,l.attributes,l.created_at,u.nickname AS seller_name,u.max_contact_url AS seller_contact_url, media.photo_url,
   COALESCE((SELECT json_agg(json_build_object('id',im.id,'url','/api/media/' || im.id::text) ORDER BY im.sort_order,im.created_at)
     FROM listing_media im WHERE im.listing_id=l.id AND im.upload_status='ready'),'[]'::json) AS images FROM listings l JOIN users u ON u.id=l.seller_id
   LEFT JOIN LATERAL (
     SELECT '/api/media/' || m.id::text AS photo_url
     FROM listing_media m WHERE m.listing_id=l.id AND m.upload_status='ready'
     ORDER BY m.sort_order,m.created_at LIMIT 1
-  ) media ON true WHERE l.id=$1 AND l.status=$2 AND EXISTS (SELECT 1 FROM placements p WHERE p.listing_id=l.id AND p.status='approved')`,[id,'active']);
+  ) media ON true WHERE l.id=$1 AND l.status=$2 AND EXISTS (SELECT 1 FROM placements p JOIN communities c ON c.id=p.community_id WHERE p.listing_id=l.id AND p.status='approved' AND c.visibility='public')`,[id,'active']);
   if(!rows.length)return reply.code(404).send({error:'Not found'});
   return rows[0];
 });
-const listingSchema=z.object({title:z.string().trim().min(3).max(120),description:z.string().max(5000).default(''),priceKopecks:z.number().int().nonnegative(),city:z.string().trim().min(1).max(80),category:z.string().min(1).max(50),requestKey:z.string().uuid()});
+app.get('/api/listings/:id/recommendations',async(req,reply)=>{
+ const id=(req.params as {id:string}).id;if(!z.string().uuid().safeParse(id).success)return reply.code(400).send({error:'Invalid id'});
+ const listing=await pool.query(`SELECT l.seller_id,l.category,l.city,u.nickname FROM listings l JOIN users u ON u.id=l.seller_id WHERE l.id=$1 AND l.status='active' AND EXISTS(SELECT 1 FROM placements p JOIN communities c ON c.id=p.community_id WHERE p.listing_id=l.id AND p.status='approved' AND c.visibility='public')`,[id]);
+ if(!listing.rows.length)return reply.code(404).send({error:'Not found'});
+ const current=listing.rows[0];
+ const rows=await pool.query(`SELECT l.id,l.title,l.price_kopecks,l.city,l.category,l.created_at,l.seller_id=$2 AS same_seller,
+  (SELECT '/api/media/'||m.id::text FROM listing_media m WHERE m.listing_id=l.id AND m.upload_status='ready' ORDER BY m.sort_order,m.created_at LIMIT 1) AS photo_url
+  FROM listings l WHERE l.id<>$1 AND l.status='active' AND (l.category=$3 OR l.seller_id=$2)
+  AND EXISTS(SELECT 1 FROM placements p JOIN communities c ON c.id=p.community_id WHERE p.listing_id=l.id AND p.status='approved' AND c.visibility='public')
+  ORDER BY (l.seller_id=$2) DESC,(l.city=$4) DESC,l.created_at DESC LIMIT 12`,[id,current.seller_id,current.category,current.city]);
+ return {sellerName:current.nickname,sellerItems:rows.rows.filter(x=>x.same_seller).slice(0,6),similarItems:rows.rows.filter(x=>x.category===current.category).slice(0,6)};
+});
+const listingSchema=z.object({title:z.string().trim().min(3).max(120),description:z.string().max(5000).default(''),priceKopecks:z.number().int().nonnegative(),city:z.string().trim().min(1).max(80),category:z.string().min(1).max(50),requestKey:z.string().uuid(),itemCondition:conditionSchema,attributes:attributesSchema.optional()});
 app.post('/api/listings',async(req,reply)=>{
   const userId=auth(req);if(!userId)return reply.code(401).send({error:'Authentication required'});
   const parsed=listingSchema.safeParse(req.body);if(!parsed.success)return reply.code(400).send({error:'Invalid listing',details:parsed.error.issues});
   const d=parsed.data;
-  const {rows}=await pool.query(`INSERT INTO listings(seller_id,title,description,price_kopecks,city,category,status,create_request_key)
-    VALUES($1,$2,$3,$4,$5,$6,'draft',$7)
+  const {rows}=await pool.query(`INSERT INTO listings(seller_id,title,description,price_kopecks,city,category,status,create_request_key,item_condition,attributes)
+    VALUES($1,$2,$3,$4,$5,$6,'draft',$7,$8,$9::jsonb)
     ON CONFLICT(seller_id,create_request_key) DO UPDATE SET updated_at=listings.updated_at
-    RETURNING *`,[userId,d.title,d.description,d.priceKopecks,d.city,d.category,d.requestKey]);
+    RETURNING *`,[userId,d.title,d.description,d.priceKopecks,d.city,d.category,d.requestKey,d.itemCondition||null,JSON.stringify(d.attributes||{})]);
   return reply.code(201).send(rows[0]);
 });
 app.post('/api/listings/:id/sold',async(req,reply)=>{

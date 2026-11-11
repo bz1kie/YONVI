@@ -39,7 +39,9 @@ try {
   assert.equal((await req('/api/me/contact')).body.url,'https://max.ru/u/test_contact');
 
   const key=crypto.randomUUID();
-  const creation={title:'Тестовый планшет YORVI',description:'Создан интеграционным тестом',priceKopecks:850000,city:'Воронеж',category:'electronics',requestKey:key};
+  const creation={title:'Тестовый планшет YORVI',description:'Создан интеграционным тестом',priceKopecks:850000,city:'Воронеж',category:'electronics',requestKey:key,itemCondition:'repair',attributes:{manufacturer:'Тест',model:'Планшет',defects:'Трещина на экране'}};
+  assert.equal((await req('/api/listings',{method:'POST',body:{...creation,itemCondition:'fake'}})).status,400);
+  assert.equal((await req('/api/listings',{method:'POST',body:{...creation,attributes:{untrusted:'value'}}})).status,400);
   const create=await req('/api/listings',{method:'POST',body:creation});
   assert.equal(create.status,201,JSON.stringify(create.body));
   const id=create.body.id;
@@ -66,6 +68,9 @@ try {
   assert.equal(approval.status,200,JSON.stringify(approval.body));
   const visible=await req('/api/listings/'+id);
   assert.equal(visible.status,200,'Approved listing must be visible');
+  assert.equal(visible.body.item_condition,'repair');
+  assert.equal(visible.body.attributes.defects,'Трещина на экране');
+  assert.equal((await req('/api/listings/'+id+'/recommendations')).status,200);
   assert.equal(visible.body.seller_contact_url,'https://max.ru/u/test_contact');
   assert.equal((await req('/api/me/contact',{method:'PUT',body:{url:''}})).status,200);
   assert.equal((await req('/api/listings/'+id)).body.seller_contact_url,null);
@@ -80,6 +85,8 @@ try {
   assert.ok(queueAgain.body.items.some(x=>x.listing_id===id));
   const approvedAgain=await req('/api/placements/'+placement.placement_id+'/moderate',{method:'POST',body:{decision:'approved'}});
   assert.equal(approvedAgain.status,200);
+  assert.equal((await req('/api/listings/'+id)).body.item_condition,'repair','Older edit clients preserve condition');
+  assert.equal((await req('/api/listings/'+id+'/recommendations')).body.similarItems.some(x=>x.id===id),false);
   const sold=await req('/api/listings/'+id+'/sold',{method:'POST'});
   assert.equal(sold.status,200);
   const soldAgain=await req('/api/listings/'+id+'/sold',{method:'POST'});

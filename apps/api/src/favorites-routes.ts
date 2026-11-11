@@ -10,7 +10,7 @@ export function registerFavoritesRoutes(app:FastifyInstance,pool:Pool,auth:Auth)
    const userId=auth(req);
    if(!userId)return reply.code(401).send({error:'Authentication required'});
    const {rows}=await pool.query(
-    `SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.created_at,
+    `SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.item_condition,l.attributes,l.created_at,
         u.nickname AS seller_name,u.max_contact_url AS seller_contact_url,media.photo_url
       FROM favorites f
       JOIN listings l ON l.id=f.listing_id

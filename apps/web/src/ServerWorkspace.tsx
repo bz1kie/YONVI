@@ -5,11 +5,11 @@ import './server-workspace.css';
 const DEV_USER = '11111111-1111-4111-8111-111111111111';
 const USER_STORAGE = 'yorvi-local-test-user';
 type Placement = { communityId: string; status: string; channelStatus?:string; channelError?:string };
-type MyListing = { id: string; title: string; description: string; price_kopecks: string|number; status: string; city: string; category: string; photo_url?: string|null; placements: Placement[] };
+type MyListing = { id: string; title: string; description: string; price_kopecks: string|number; status: string; city: string; category: string; item_condition?:string|null;attributes?:Record<string,string>; photo_url?: string|null; placements: Placement[] };
 type Community = { id:string; name:string; city?:string; max_channel_url?:string; max_channel_title?:string };
 type QueueItem = { placement_id:string; listing_id:string; title:string; description:string; price_kopecks:string|number; city:string };
-type Draft = { title:string; description:string; price:string; city:string; category:string };
-const startDraft: Draft = {title:'',description:'',price:'',city:'Воронеж',category:'electronics'};
+type Draft = { title:string; description:string; price:string; city:string; category:string;itemCondition:string;attributes:Record<string,string> };
+const startDraft: Draft = {title:'',description:'',price:'',city:'Воронеж',category:'electronics',itemCondition:'used',attributes:{}};
 const rub = (kopecks:string|number) => new Intl.NumberFormat('ru-RU',{style:'currency',currency:'RUB',maximumFractionDigits:0}).format(Number(kopecks)/100);
 const statusText:Record<string,string> = {draft:'Черновик',active:'Опубликовано',reserved:'Резерв',sold:'Продано',archived:'Архив',approved:'Одобрено',pending:'На проверке',rejected:'Отклонено',removed:'Снято'};
 
@@ -103,7 +103,7 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
  const [draftOwner,setDraftOwner]=useState<string|null>(null);
  useEffect(()=>{
   const owner=sessionUser?.id||(import.meta.env.DEV?user:null);setDraftOwner(null);if(!owner)return;
-  try{const stored=JSON.parse(localStorage.getItem('lavose-draft-'+owner)||'null');if(stored&&typeof stored.title==='string'&&typeof stored.description==='string'&&typeof stored.price==='string'&&typeof stored.city==='string'&&typeof stored.category==='string')setDraft({title:stored.title.slice(0,120),description:stored.description.slice(0,5000),price:stored.price.slice(0,20),city:stored.city.slice(0,80),category:stored.category.slice(0,50)});else setDraft(startDraft);}catch{setDraft(startDraft);}
+  try{const stored=JSON.parse(localStorage.getItem('lavose-draft-'+owner)||'null');if(stored&&typeof stored.title==='string'&&typeof stored.description==='string'&&typeof stored.price==='string'&&typeof stored.city==='string'&&typeof stored.category==='string')setDraft({title:stored.title.slice(0,120),description:stored.description.slice(0,5000),price:stored.price.slice(0,20),city:stored.city.slice(0,80),category:stored.category.slice(0,50),itemCondition:typeof stored.itemCondition==='string'?stored.itemCondition:'used',attributes:stored.attributes&&typeof stored.attributes==='object'?Object.fromEntries(Object.entries(stored.attributes).filter(([k,v])=>typeof v==='string').map(([k,v])=>[k,String(v).slice(0,500)])):{}});else setDraft(startDraft);}catch{setDraft(startDraft);}
   setDraftOwner(owner);
  },[sessionUser?.id,user]);
  useEffect(()=>{
@@ -147,7 +147,7 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
   if(!editId&&!chosenCircles.length){notify('error','Выберите хотя бы один круг.');return;}
   if(photoFiles.length>10){notify('error','Максимум 10 фотографий');return;}
   await action(async()=>{
-    const values={title:draft.title.trim(),description:draft.description.trim(),priceKopecks:Math.round(price*100)};
+    const values={title:draft.title.trim(),description:draft.description.trim(),priceKopecks:Math.round(price*100),itemCondition:draft.itemCondition||null,attributes:draft.attributes};
     let listingId=editId||pendingDraftId;
     if(editId){
       await api(`/api/listings/${editId}`,user,{method:'PATCH',body:JSON.stringify(values)},Boolean(sessionUser));
@@ -199,7 +199,7 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
  }
  function edit(l:MyListing){
   if(l.status!=='draft'&&l.status!=='active')return;
-  setFormOpen(true);setEditId(l.id);setPhotoFiles([]);completedPhotos.current=0;setPendingDraftId(null);setDraft({title:l.title,description:l.description,price:String(Number(l.price_kopecks)/100),city:l.city,category:l.category});
+  setFormOpen(true);setEditId(l.id);setPhotoFiles([]);completedPhotos.current=0;setPendingDraftId(null);setDraft({title:l.title,description:l.description,price:String(Number(l.price_kopecks)/100),city:l.city,category:l.category,itemCondition:l.item_condition||'',attributes:l.attributes||{}});
   window.scrollTo({top:0,behavior:'smooth'});
  }
  function toggleCircle(id:string){setChosenCircles(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id]);}
@@ -287,6 +287,11 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
      <label>Категория<select disabled={!!editId} value={draft.category} onChange={e=>field('category',e.target.value)}><option value="electronics">Электроника</option><option value="gaming">Игры</option><option value="fashion">Одежда</option><option value="home">Для дома</option><option value="transport">Транспорт</option><option value="hobby">Хобби</option><option value="auto">Авто</option></select></label>
      <label className="sw-wide">Описание<textarea required maxLength={5000} rows={3} value={draft.description} onChange={e=>field('description',e.target.value)}/></label>
     </div>
+    <fieldset className="sw-attributes"><legend>Состояние и характеристики</legend>
+     <label>Состояние<select value={draft.itemCondition} onChange={e=>field('itemCondition',e.target.value)}><option value="">Не указано</option><option value="new">Новое</option><option value="excellent">Отличное</option><option value="good">Хорошее</option><option value="used">Б/у</option><option value="repair">Требует ремонта</option></select></label>
+     {(draft.category==='auto'?[['manufacturer','Производитель'],['part_number','Артикул'],['compatibility','Совместимость с автомобилем']]:draft.category==='electronics'||draft.category==='gaming'?[['manufacturer','Производитель'],['model','Модель'],['memory','Память / комплектация'],['color','Цвет']]:[['manufacturer','Производитель'],['model','Модель'],['color','Цвет']]).map(([key,label])=><label key={key}>{label}<input maxLength={160} value={draft.attributes[key]||''} onChange={e=>setDraft(previous=>({...previous,attributes:{...previous.attributes,[key]:e.target.value}}))}/></label>)}
+     <label>Дефекты и особенности<textarea rows={2} maxLength={500} placeholder="Укажите недостатки, если они есть" value={draft.attributes.defects||''} onChange={e=>setDraft(previous=>({...previous,attributes:{...previous.attributes,defects:e.target.value}}))}/></label>
+    </fieldset>
     {!editId&&<fieldset className="sw-circles"><legend>Разместить в кругах</legend>{communities.map(c=><label key={c.id}><input type="checkbox" checked={chosenCircles.includes(c.id)} onChange={()=>toggleCircle(c.id)}/><span>{c.name}</span><small>{c.city}</small></label>)}{!communities.length&&<div><p>Создайте первый круг. Вы станете его владельцем и сможете одобрять объявления во вкладке «Модерация кругов».</p><label>Название круга<input value={newCircleName} minLength={3} maxLength={80} onChange={e=>setNewCircleName(e.target.value)}/></label><button type="button" className="sw-btn sw-secondary" disabled={busy||newCircleName.trim().length<3} onClick={()=>void action(async()=>{
       const circle=await api<{id:string}>('/api/communities',user,{method:'POST',body:JSON.stringify({name:newCircleName.trim()})},Boolean(sessionUser));
       setChosenCircles([circle.id]);setSelectedCircle(circle.id);
