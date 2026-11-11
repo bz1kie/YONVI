@@ -74,6 +74,26 @@ app.post('/api/listings/:id/sold',async(req,reply)=>{
   return exists.rows.length?reply.code(409).send({error:'Invalid state transition'}):reply.code(404).send({error:'Not found'});
 });
 app.get('/api/communities',async()=>({items:(await pool.query("SELECT id,name,city,visibility FROM communities WHERE visibility='public' ORDER BY name")).rows}));
+// Each authenticated seller may create and moderate their own public circle.
+app.post('/api/communities',async(req,reply)=>{
+  const userId=auth(req);if(!userId)return reply.code(401).send({error:'Unauthorized'});
+  const parsed=z.object({name:z.string().trim().min(3).max(80)}).strict().safeParse(req.body);
+  if(!parsed.success)return reply.code(400).send({error:'Invalid community name'});
+  const client=await pool.connect();
+  try{
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',[userId]);
+    const existing=await client.query('SELECT id,name FROM communities WHERE owner_id=$1 AND name=$2',[userId,parsed.data.name]);
+    let community=existing.rows[0];
+    if(!community){
+      const created=await client.query("INSERT INTO communities(owner_id,name,visibility) VALUES($1,$2,'public') RETURNING id,name",[userId,parsed.data.name]);
+      community=created.rows[0];
+      await client.query("INSERT INTO community_roles(community_id,user_id,role) VALUES($1,$2,'owner')",[community.id,userId]);
+    }
+    await client.query('COMMIT');
+    return reply.code(existing.rows.length?200:201).send(community);
+  }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
+});
 app.post('/api/placements/:id/moderate',async(req,reply)=>{
   const userId=auth(req);if(!userId)return reply.code(401).send({error:'Unauthorized'});
   const id=(req.params as {id:string}).id;

@@ -69,6 +69,7 @@ export default function ServerWorkspace() {
    window.addEventListener('yorvi:auth-change',onAuth);
    return ()=>window.removeEventListener('yorvi:auth-change',onAuth);
  },[refreshAuth]);
+ const [newCircleName,setNewCircleName]=useState('Общий каталог YONVI');
  const [communities,setCommunities]=useState<Community[]>([]);
  const [mine,setMine]=useState<MyListing[]>([]);
  const [queue,setQueue]=useState<QueueItem[]>([]);
@@ -233,7 +234,10 @@ export default function ServerWorkspace() {
       {photoFiles.length?<div className="sw-photo-chips">{photoFiles.map((file,i)=><span key={file.name+'-'+i}>{i+1}. {file.name}</span>)}</div>:null}
       <small>Файлы отправляются до публикации. При ошибке черновик останется в базе.</small>
     </div>
-    {!editId&&<fieldset className="sw-circles"><legend>Разместить в кругах</legend>{communities.map(c=><label key={c.id}><input type="checkbox" checked={chosenCircles.includes(c.id)} onChange={()=>toggleCircle(c.id)}/><span>{c.name}</span><small>{c.city}</small></label>)}{!communities.length&&<p>Нет доступных кругов — запустите PostgreSQL и загрузите тестовые данные.</p>}</fieldset>}
+    {!editId&&<fieldset className="sw-circles"><legend>Разместить в кругах</legend>{communities.map(c=><label key={c.id}><input type="checkbox" checked={chosenCircles.includes(c.id)} onChange={()=>toggleCircle(c.id)}/><span>{c.name}</span><small>{c.city}</small></label>)}{!communities.length&&<div><p>Создайте первый круг. Вы станете его владельцем и сможете одобрять объявления во вкладке «Модерация кругов».</p><label>Название круга<input value={newCircleName} minLength={3} maxLength={80} onChange={e=>setNewCircleName(e.target.value)}/></label><button type="button" className="sw-btn sw-secondary" disabled={busy||newCircleName.trim().length<3} onClick={()=>void action(async()=>{
+      const circle=await api<{id:string}>('/api/communities',user,{method:'POST',body:JSON.stringify({name:newCircleName.trim()})},Boolean(sessionUser));
+      setChosenCircles([circle.id]);setSelectedCircle(circle.id);
+    },'Круг создан. Теперь можно отправить объявление на проверку.')}>Создать круг</button></div>}</fieldset>}
     {uploadProgress?<p role="status" className="sw-upload-progress">Загружаем {uploadProgress}</p>:null}
     {pendingDraftId&&!editId?<p className="sw-upload-progress">Черновик сохранён. Повторная отправка не создаст дубликат.</p>:null}
     <div className="sw-actions"><button className="sw-btn sw-primary" disabled={busy||loading||(!sessionUser&&!uuidOrEmpty(user))} type="submit">{busy?'Сохраняем…':editId?'Сохранить и проверить заново':'Создать и отправить'}</button>{editId&&<button className="sw-btn sw-secondary" type="button" onClick={()=>{setEditId(null);setPendingDraftId(null);setPhotoFiles([]);completedPhotos.current=0;setDraft(startDraft);}}>Отмена</button>}</div>
