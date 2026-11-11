@@ -51,6 +51,9 @@ async function api<T>(path:string, user:string, init:RequestInit = {}, authentic
  return payload as T;
 }
 export default function ServerWorkspace({createRequest=0}:{createRequest?:number}) {
+ const [contactUrl,setContactUrl]=useState('');
+ const [contactStatus,setContactStatus]=useState('');
+ const [contactBusy,setContactBusy]=useState(false);
  const [channelMessage,setChannelMessage]=useState('');
  const [channelBusy,setChannelBusy]=useState(false);
  const [formOpen,setFormOpen]=useState(createRequest>0);
@@ -73,6 +76,12 @@ export default function ServerWorkspace({createRequest=0}:{createRequest?:number
    window.addEventListener('yorvi:auth-change',onAuth);
    return ()=>window.removeEventListener('yorvi:auth-change',onAuth);
  },[refreshAuth]);
+ useEffect(()=>{
+   if(!sessionUser){setContactUrl('');return;}
+   let active=true;
+   api<{url:string}>('/api/me/contact',user,{},true).then(data=>{if(active)setContactUrl(data.url);}).catch(()=>{if(active)setContactStatus('Не удалось загрузить ссылку для связи.');});
+   return ()=>{active=false;};
+ },[sessionUser?.id,user]);
  const [newCircleName,setNewCircleName]=useState('Общий каталог LAVOSE');
  const [communities,setCommunities]=useState<Community[]>([]);
  const [mine,setMine]=useState<MyListing[]>([]);
@@ -209,6 +218,19 @@ export default function ServerWorkspace({createRequest=0}:{createRequest?:number
    <button className="sw-btn sw-secondary" type="button" disabled={!uuidOrEmpty(user)||busy} onClick={()=>{try{localStorage.setItem(USER_STORAGE,user);}catch{}void fetchData();}}>Применить</button>
   </div>:null}
   {alert&&<div role="status" className={'sw-alert sw-'+alert.kind}>{alert.text}</div>}
+  <details className="sw-panel"><summary>Связь с покупателями</summary>
+   <form onSubmit={async e=>{
+    e.preventDefault();setContactBusy(true);setContactStatus('Сохраняем…');
+    try{const data=await api<{url:string}>('/api/me/contact',user,{method:'PUT',body:JSON.stringify({url:contactUrl})},Boolean(sessionUser));setContactUrl(data.url);setContactStatus(data.url?'Ссылка сохранена. Покупатели смогут написать вам в MAX.':'Ссылка удалена.');window.dispatchEvent(new Event('yorvi:catalog-change'));}
+    catch(error){setContactStatus(errorText(error));}finally{setContactBusy(false);}
+   }}>
+    <label htmlFor="seller-max-contact">Ссылка на ваш личный профиль MAX</label>
+    <input id="seller-max-contact" type="url" maxLength={280} placeholder="https://max.ru/u/…" value={contactUrl} onChange={e=>setContactUrl(e.target.value)} aria-describedby="seller-max-help"/>
+    <p id="seller-max-help">Скопируйте ссылку в MAX: свой профиль → QR-код → Поделиться. Сохранённая ссылка будет доступна покупателям в ваших объявлениях. Оставьте поле пустым, чтобы убрать связь.</p>
+    <button className="sw-btn sw-secondary" disabled={contactBusy} type="submit">{contactBusy?'Сохраняем…':'Сохранить ссылку'}</button>
+    {contactStatus?<p role="status">{contactStatus}</p>:null}
+   </form>
+  </details>
   <details className="sw-panel" open={!communities.some(c=>c.max_channel_url)}><summary>Канал MAX {communities.some(c=>c.max_channel_url)?'· подключён':''}</summary>
    {communities.filter(c=>c.max_channel_url).map(c=><p key={c.id}><a href={c.max_channel_url} target="_blank" rel="noreferrer">{c.max_channel_title||c.name} ↗</a></p>)}
    <p>Лаврик должен быть администратором канала. Подключение доступно владельцу канала.</p>

@@ -21,11 +21,25 @@ await app.register(cors,{origin:process.env.WEB_ORIGIN || 'http://localhost:5173
 app.get('/health',async()=>({ok:true,service:'yorvi-api',version:'2.0.0-alpha.1'}));
 registerMaxAuthentication(app,pool);
 const auth=currentUserId;
+
+app.get('/api/me/contact',async(req,reply)=>{
+ const userId=auth(req);if(!userId)return reply.code(401).send({error:'Unauthorized'});
+ const result=await pool.query('SELECT max_contact_url FROM users WHERE id=$1',[userId]);
+ return {url:result.rows[0]?.max_contact_url||''};
+});
+app.put('/api/me/contact',async(req,reply)=>{
+ const userId=auth(req);if(!userId)return reply.code(401).send({error:'Unauthorized'});
+ const data=z.object({url:z.string().trim().max(280).refine(value=>value===''||/^https:\/\/max\.ru\/u\/[A-Za-z0-9_-]{1,256}$/.test(value))}).strict().safeParse(req.body);
+ if(!data.success)return reply.code(400).send({error:'Вставьте полную ссылку на личный профиль вида https://max.ru/u/…'});
+ await pool.query('UPDATE users SET max_contact_url=$1 WHERE id=$2',[data.data.url||null,userId]);
+ return {url:data.data.url};
+});
+
 app.get('/api/listings',async(req,reply)=>{
   const q=z.object({city:z.string().max(80).optional(),category:z.string().max(50).optional(),search:z.string().max(100).optional(),communityId:z.string().uuid().optional(),limit:z.coerce.number().int().min(1).max(50).default(20)}).safeParse(req.query);
   if(!q.success)return reply.code(400).send({error:'Invalid query'});
   const {city,category,search,communityId,limit}=q.data;
-  const {rows}=await pool.query(`SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.created_at, u.nickname AS seller_name, media.photo_url FROM listings l JOIN users u ON u.id=l.seller_id
+  const {rows}=await pool.query(`SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.created_at, u.nickname AS seller_name,u.max_contact_url AS seller_contact_url, media.photo_url FROM listings l JOIN users u ON u.id=l.seller_id
   LEFT JOIN LATERAL (
     SELECT '/api/media/' || m.id::text AS photo_url
     FROM listing_media m WHERE m.listing_id=l.id AND m.upload_status='ready'
@@ -42,7 +56,7 @@ app.get('/api/listings',async(req,reply)=>{
 app.get('/api/listings/:id',async(req,reply)=>{
   const id=(req.params as {id:string}).id;
   if(!z.string().uuid().safeParse(id).success)return reply.code(400).send({error:'Invalid id'});
-  const {rows}=await pool.query(`SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.created_at,u.nickname AS seller_name, media.photo_url,
+  const {rows}=await pool.query(`SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.created_at,u.nickname AS seller_name,u.max_contact_url AS seller_contact_url, media.photo_url,
   COALESCE((SELECT json_agg(json_build_object('id',im.id,'url','/api/media/' || im.id::text) ORDER BY im.sort_order,im.created_at)
     FROM listing_media im WHERE im.listing_id=l.id AND im.upload_status='ready'),'[]'::json) AS images FROM listings l JOIN users u ON u.id=l.seller_id
   LEFT JOIN LATERAL (

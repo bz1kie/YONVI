@@ -1,7 +1,7 @@
 /** Public and account-scoped YORVI API. Never send a user ID from the client as authentication. */
 export interface ServerListing {
  id:string;title:string;description:string;price_kopecks:string|number;
- category:string;city:string;created_at:string;seller_name?:string;photo_url?:string|null;
+ category:string;city:string;created_at:string;seller_name?:string;seller_contact_url?:string|null;photo_url?:string|null;
 }
 export interface ServerCircle {id:string;name:string;city?:string|null;visibility?:string}
 export interface PublicListingFilters {communityId?:string;city?:string;category?:string;search?:string}

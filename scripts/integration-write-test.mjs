@@ -30,6 +30,14 @@ try {
   const forbidden=await req('/api/me/listings',{auth:false});
   assert.equal(forbidden.status,401);
 
+  assert.equal((await req('/api/me/contact',{auth:false})).status,401);
+  assert.equal((await req('/api/me/contact',{method:'PUT',body:{url:'https://max.ru/u/test_contact'},auth:false})).status,401);
+  for(const url of ['javascript:alert(1)','https://max.ru.evil.com/u/test','https://max.ru@evil.com/u/test','https://max.ru/u/test?redirect=evil','https://max.ru/se14029050_biz']){
+    assert.equal((await req('/api/me/contact',{method:'PUT',body:{url}})).status,400);
+  }
+  assert.equal((await req('/api/me/contact',{method:'PUT',body:{url:'https://max.ru/u/test_contact'}})).status,200);
+  assert.equal((await req('/api/me/contact')).body.url,'https://max.ru/u/test_contact');
+
   const key=crypto.randomUUID();
   const creation={title:'Тестовый планшет YORVI',description:'Создан интеграционным тестом',priceKopecks:850000,city:'Воронеж',category:'electronics',requestKey:key};
   const create=await req('/api/listings',{method:'POST',body:creation});
@@ -58,6 +66,10 @@ try {
   assert.equal(approval.status,200,JSON.stringify(approval.body));
   const visible=await req('/api/listings/'+id);
   assert.equal(visible.status,200,'Approved listing must be visible');
+  assert.equal(visible.body.seller_contact_url,'https://max.ru/u/test_contact');
+  assert.equal((await req('/api/me/contact',{method:'PUT',body:{url:''}})).status,200);
+  assert.equal((await req('/api/listings/'+id)).body.seller_contact_url,null);
+
 
   const edited=await req('/api/listings/'+id,{method:'PATCH',body:{title:'Тестовый планшет после редактирования',description:'Изменили цену и характеристики',priceKopecks:810000}});
   assert.equal(edited.status,200);
