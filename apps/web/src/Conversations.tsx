@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import './conversations.css';
-type Thread={id:string;title:string;partner_name:string;last_message?:string;listing_status:string};
+type Thread={id:string;title:string;photo_url?:string|null;price_kopecks?:string|number;updated_at?:string;partner_name:string;last_message?:string;listing_status:string};
 type Message={id:string;text:string;mine:boolean;created_at:string};
 async function request<T>(path:string,body?:unknown):Promise<T>{
  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),20000);
@@ -9,14 +9,15 @@ async function request<T>(path:string,body?:unknown):Promise<T>{
   const data=await response.json();if(!response.ok)throw Error(data.error||'Не удалось загрузить сообщения.');return data;
  }finally{clearTimeout(timer);}
 }
-export default function Conversations(){
+export default function Conversations({active,onOpen,onClose}:{active:boolean;onOpen:()=>void;onClose:()=>void}){
+ const [search,setSearch]=useState('');
  const [open,setOpen]=useState(false);const [threads,setThreads]=useState<Thread[]>([]);const [selected,setSelected]=useState('');
  const [messages,setMessages]=useState<Message[]>([]);const [text,setText]=useState('');const [error,setError]=useState('');const [busy,setBusy]=useState(false);const [loading,setLoading]=useState(false);
  const epoch=useRef(0);const messageEpoch=useRef(0);const retry=useRef<{text:string;key:string;id:string}|null>(null);const draft=useRef('');const panel=useRef<HTMLElement>(null);const bottom=useRef<HTMLDivElement>(null);
  const refreshThreads=useCallback(async()=>{const version=epoch.current;const data=await request<{items:Thread[]}>('/conversations');if(version===epoch.current)setThreads(data.items);},[]);
  useEffect(()=>{
   const launch=async(event:Event)=>{
-   const version=++epoch.current;setOpen(true);setError('');setLoading(true);setSelected('');setMessages([]);setText('');retry.current=null;
+   const version=++epoch.current;onOpen();setOpen(true);setError('');setLoading(true);setSelected('');setMessages([]);setText('');retry.current=null;
    const listingId=(event as CustomEvent<{listingId?:string}>).detail?.listingId;
    try{
     const conversation=listingId?await request<{id:string}>('/conversations',{listingId}):null;
@@ -37,7 +38,7 @@ export default function Conversations(){
   };
   window.addEventListener('yorvi:auth-change',onAuth);
   return ()=>{epoch.current++;window.removeEventListener('lavose:messages',handler);window.removeEventListener('yorvi:auth-change',onAuth);};
- },[refreshThreads]);
+ },[refreshThreads,onOpen]);
  useEffect(()=>{
   if(!open)return;let active=true;
   const tick=()=>{request<{items:Thread[]}>('/conversations').then(data=>{if(active)setThreads(data.items);}).catch(()=>{});};
@@ -49,12 +50,13 @@ export default function Conversations(){
   const tick=async()=>{try{const data=await request<{items:Message[]}>('/conversations/'+selected+'/messages');if(active&&version===messageEpoch.current)setMessages(data.items);}catch(e){if(active)setError(e instanceof Error?e.message:'Ошибка загрузки.');}finally{if(active)setLoading(false);}};
   void tick();const timer=setInterval(()=>void tick(),5000);return ()=>{active=false;messageEpoch.current++;clearInterval(timer);};
  },[open,selected]);
- const close=()=>{epoch.current++;setOpen(false);setSelected('');};
- useEffect(()=>{if(!open)return;const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape')close();if(e.key==='Tab'){const elements=panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled),textarea:not(:disabled)');if(elements?.length){const first=elements[0],last=elements[elements.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}}};const previous=document.activeElement as HTMLElement|null;panel.current?.querySelector<HTMLElement>('button')?.focus();window.addEventListener('keydown',onKey);const old=document.body.style.overflow;document.body.style.overflow='hidden';return ()=>{window.removeEventListener('keydown',onKey);document.body.style.overflow=old;previous?.focus();};},[open]);
+ const close=()=>{epoch.current++;setOpen(false);setSelected('');onClose();};
+ useEffect(()=>{if(active&&!open)window.dispatchEvent(new CustomEvent('lavose:messages'));else if(!active){epoch.current++;setOpen(false);setSelected('');}},[active]);
+ useEffect(()=>{if(!open)return;const key=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose();};window.addEventListener('keydown',key);return ()=>window.removeEventListener('keydown',key);},[open,onClose]);
  useEffect(()=>{bottom.current?.scrollIntoView({block:'end'});},[messages[messages.length-1]?.id]);
  const thread=threads.find(t=>t.id===selected);
  if(!open)return null;
- return <div className="chat-backdrop"><section ref={panel} className="lavose-chat" role="dialog" aria-modal="true" aria-label="Сообщения Лавось">
+ return <div className="chat-backdrop chat-page"><section ref={panel} className="lavose-chat" role="region" aria-label="Сообщения Лавось">
   <header>{selected?<button type="button" onClick={()=>{epoch.current++;setSelected('');setError('');}}>← Диалоги</button>:<strong>Сообщения</strong>}<button type="button" onClick={close} aria-label="Закрыть сообщения">✕</button></header>
   {error?<p role="alert" className="chat-error">{error}</p>:null}
   {selected?<><div className="chat-heading"><strong>{thread?.title||'Объявление'}</strong><span>{thread?.partner_name||'Собеседник'}</span></div>
@@ -67,6 +69,6 @@ export default function Conversations(){
      setMessages(previous=>previous.some(m=>m.id===item.id)?previous:[...previous,item]);if(draft.current===text){setText('');draft.current='';}retry.current=null;void refreshThreads().catch(()=>{});
     }catch(e){if(version===epoch.current)setError(e instanceof Error?e.message:'Сообщение не отправлено. Попробуйте снова.');}finally{setBusy(false);}
    }}><label className="chat-sr" htmlFor="chat-text">Сообщение продавцу или покупателю</label><textarea autoFocus id="chat-text" rows={2} maxLength={2000} placeholder="Напишите сообщение…" value={text} onChange={e=>{setText(e.target.value);draft.current=e.target.value;}} disabled={busy}/><button type="submit" disabled={busy||!text.trim()}>{busy?'Отправка…':'Отправить'}</button></form>
-  </>:<div className="chat-threads">{loading?<p>Загрузка…</p>:threads.length?threads.map(t=><button type="button" key={t.id} onClick={()=>{epoch.current++;setSelected(t.id);setError('');}}><strong>{t.title}</strong><span>{t.partner_name}</span><small>{t.last_message||'Нет сообщений'}</small></button>):<p>Пока нет диалогов. Откройте объявление и нажмите «Написать продавцу».</p>}</div>}
+  </>:<div className="chat-threads"><label className="chat-search"><span className="chat-sr">Поиск диалогов</span><input type="search" placeholder="Найти диалог" value={search} onChange={e=>setSearch(e.target.value)}/></label>{loading?<p>Загрузка…</p>:threads.length?threads.filter(t=>(t.title+' '+t.partner_name+' '+(t.last_message||'')).toLowerCase().includes(search.toLowerCase())).map(t=><button type="button" key={t.id} onClick={()=>{epoch.current++;setSelected(t.id);setError('');}}>{t.photo_url?<img src={t.photo_url} alt="" loading="lazy"/>:<div className="chat-thumb-placeholder" aria-hidden="true">✉</div>}<div className="chat-thread-copy"><strong>{t.partner_name}</strong><span>{t.title}</span><small>{t.last_message||'Начните разговор'}</small></div>{t.updated_at?<time>{new Date(t.updated_at).toLocaleDateString('ru-RU',{day:'numeric',month:'short'})}</time>:null}</button>):<p>Пока нет диалогов. Откройте объявление и нажмите «Написать продавцу».</p>}</div>}
  </section></div>;
 }

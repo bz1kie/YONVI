@@ -34,7 +34,8 @@ export function registerConversationRoutes(app:FastifyInstance,pool:Pool,auth:Au
  });
  app.get('/api/conversations',async(req,reply)=>{
   const user=auth(req);if(!user)return reply.code(401).send({error:'Войдите через MAX, чтобы открыть сообщения.'});
-  const rows=await pool.query(`SELECT c.id,l.title,l.status AS listing_status,
+  const rows=await pool.query(`SELECT c.id,l.title,l.price_kopecks,l.status AS listing_status,
+   (SELECT '/api/media/' || media.id::text FROM listing_media media WHERE media.listing_id=l.id AND media.upload_status='ready' ORDER BY media.sort_order,media.created_at LIMIT 1) AS photo_url,
    CASE WHEN c.buyer_id=$1 THEN seller.nickname ELSE buyer.nickname END AS partner_name,c.updated_at,
    (SELECT text FROM conversation_messages m WHERE m.conversation_id=c.id ORDER BY m.id DESC LIMIT 1) AS last_message
    FROM conversations c JOIN listings l ON l.id=c.listing_id JOIN users seller ON seller.id=c.seller_id JOIN users buyer ON buyer.id=c.buyer_id

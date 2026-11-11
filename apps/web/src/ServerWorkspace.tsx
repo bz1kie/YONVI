@@ -50,7 +50,7 @@ async function api<T>(path:string, user:string, init:RequestInit = {}, authentic
  }
  return payload as T;
 }
-export default function ServerWorkspace({createRequest=0}:{createRequest?:number}) {
+export default function ServerWorkspace({createRequest=0,view='listings'}:{createRequest?:number;view?:'listings'|'profile'}) {
  const [notifications,setNotifications]=useState(false);
  const [notificationMessage,setNotificationMessage]=useState('');
  const [notificationBusy,setNotificationBusy]=useState(false);
@@ -81,6 +81,8 @@ export default function ServerWorkspace({createRequest=0}:{createRequest?:number
   api<{enabled:boolean;last_status?:string}>('/api/me/message-notifications',user,{},true).then(data=>{if(active){setNotifications(data.enabled);if(data.last_status==='failed')setNotificationMessage('MAX не принял уведомление. Запустите Лаврика и проверьте, что бот не заблокирован.');}}).catch(()=>{});
   return ()=>{active=false;};
  },[sessionUser?.id,user]);
+ const [managed,setManaged]=useState<Community[]>([]);
+ const [listingFilter,setListingFilter]=useState('active');
  const [newCircleName,setNewCircleName]=useState('Общий каталог LAVOSE');
  const [communities,setCommunities]=useState<Community[]>([]);
  const [mine,setMine]=useState<MyListing[]>([]);
@@ -98,6 +100,16 @@ export default function ServerWorkspace({createRequest=0}:{createRequest?:number
  const [loading,setLoading]=useState(false);
  const [alert,setAlert]=useState<{kind:'error'|'success'|'info';text:string}|null>(null);
  const [tab,setTab]=useState<'listings'|'moderation'>('listings');
+ const [draftOwner,setDraftOwner]=useState<string|null>(null);
+ useEffect(()=>{
+  const owner=sessionUser?.id||(import.meta.env.DEV?user:null);setDraftOwner(null);if(!owner)return;
+  try{const stored=JSON.parse(localStorage.getItem('lavose-draft-'+owner)||'null');if(stored&&typeof stored.title==='string'&&typeof stored.description==='string'&&typeof stored.price==='string'&&typeof stored.city==='string'&&typeof stored.category==='string')setDraft({title:stored.title.slice(0,120),description:stored.description.slice(0,5000),price:stored.price.slice(0,20),city:stored.city.slice(0,80),category:stored.category.slice(0,50)});else setDraft(startDraft);}catch{setDraft(startDraft);}
+  setDraftOwner(owner);
+ },[sessionUser?.id,user]);
+ useEffect(()=>{
+  if(!draftOwner||editId)return;
+  try{if(draft.title||draft.description||draft.price)localStorage.setItem('lavose-draft-'+draftOwner,JSON.stringify(draft));else localStorage.removeItem('lavose-draft-'+draftOwner);}catch{}
+ },[draft,draftOwner,editId]);
  const notify=(kind:'error'|'success'|'info',text:string)=>setAlert({kind,text});
  const fetchData=useCallback(async()=>{
   setLoading(true);
@@ -110,6 +122,7 @@ export default function ServerWorkspace({createRequest=0}:{createRequest?:number
    setChosenCircles(previous=>previous.length?previous.filter(id=>available.some(c=>c.id===id)):available.length?[available[0].id]:[]);
    const own=await api<{items:MyListing[]}>('/api/me/listings',user,{},Boolean(sessionUser));
    setMine(own.items||[]);
+   const mg=await api<{items:Community[]}>('/api/me/managed-communities',user,{},Boolean(sessionUser));setManaged(mg.items);
    setAlert(null);
   }catch(error){notify('error',errorText(error));setMine([]);}
   finally{setLoading(false);}
@@ -157,7 +170,8 @@ export default function ServerWorkspace({createRequest=0}:{createRequest?:number
     if(!editId){
       await api(`/api/listings/${listingId}/submit`,user,{method:'POST',body:JSON.stringify({communityIds:chosenCircles})},Boolean(sessionUser));
     }
-    setDraft(startDraft);setEditId(null);setPhotoFiles([]);completedPhotos.current=0;setPendingDraftId(null);setFormOpen(false);
+    if(draftOwner){try{localStorage.removeItem('lavose-draft-'+draftOwner);}catch{}}
+    setListingFilter('pending');setDraft(startDraft);setEditId(null);setPhotoFiles([]);completedPhotos.current=0;setPendingDraftId(null);setFormOpen(false);
   },editId?'Изменения сохранены. Публикация отправлена на повторную проверку.':'Объявление создано и отправлено модераторам.');
  }
  async function uploadPhoto(listingId:string, file:File){
@@ -200,10 +214,12 @@ export default function ServerWorkspace({createRequest=0}:{createRequest?:number
  async function moderate(item:QueueItem,decision:'approved'|'rejected'){
   await action(async()=>{await api(`/api/placements/${item.placement_id}/moderate`,user,{method:'POST',body:JSON.stringify({decision})},Boolean(sessionUser));},decision==='approved'?'Объявление одобрено':'Объявление отклонено');
  }
+ const group=(l:MyListing)=>l.status==='draft'?'draft':l.status==='sold'?'sold':l.status==='active'&&!l.placements.some(p=>p.status==='approved')?(l.placements.some(p=>p.status==='pending')?'pending':'rejected'):l.status;
+ const visible=mine.filter(l=>group(l)===listingFilter);
  const field=(key:keyof Draft,value:string)=>setDraft(prev=>({...prev,[key]:value}));
- return <section className="server-workspace">
+ return <section className={'server-workspace workspace-'+view}>
   <div className="sw-heading">
-   <div><h1>{sessionUser?.nickname||'Профиль'}</h1></div>
+   <div><h1>{view==='profile'?(sessionUser?.nickname||'Профиль'):'Мои объявления'}</h1></div>
    <button className="sw-btn sw-secondary" type="button" disabled={busy||loading} onClick={()=>void fetchData()}>↻ Обновить</button>
   </div>
   {sessionUser?
@@ -217,6 +233,7 @@ export default function ServerWorkspace({createRequest=0}:{createRequest?:number
    <button className="sw-btn sw-secondary" type="button" disabled={!uuidOrEmpty(user)||busy} onClick={()=>{try{localStorage.setItem(USER_STORAGE,user);}catch{}void fetchData();}}>Применить</button>
   </div>:null}
   {alert&&<div role="status" className={'sw-alert sw-'+alert.kind}>{alert.text}</div>}
+  {view==='profile'?<>
   <button type="button" className="sw-btn sw-primary" onClick={()=>window.dispatchEvent(new CustomEvent('lavose:messages'))}>Сообщения покупателей и продавцов</button>
   <details className="sw-panel"><summary>Уведомления о сообщениях</summary>
    <label><input type="checkbox" checked={notifications} disabled={notificationBusy} onChange={async e=>{
@@ -227,7 +244,7 @@ export default function ServerWorkspace({createRequest=0}:{createRequest?:number
    <p>Сначала запустите <a href="https://max.ru/se14029050_1_bot" target="_blank" rel="noreferrer">Лаврика в MAX</a>. Текст переписки остаётся внутри Лавось.</p>
    {notificationMessage?<p role="status">{notificationMessage}</p>:null}
   </details>
-  <details className="sw-panel" open={!communities.some(c=>c.max_channel_url)}><summary>Канал MAX {communities.some(c=>c.max_channel_url)?'· подключён':''}</summary>
+  {managed.length?<details className="sw-panel"><summary>Канал MAX {communities.some(c=>c.max_channel_url)?'· подключён':''}</summary>
    {communities.filter(c=>c.max_channel_url).map(c=><p key={c.id}><a href={c.max_channel_url} target="_blank" rel="noreferrer">{c.max_channel_title||c.name} ↗</a></p>)}
    <p>Лаврик должен быть администратором канала. Подключение доступно владельцу канала.</p>
    <button type="button" className="sw-btn sw-secondary" disabled={channelBusy} onClick={async()=>{
@@ -239,22 +256,16 @@ export default function ServerWorkspace({createRequest=0}:{createRequest?:number
     finally{setChannelBusy(false);}
    }}>{channelBusy?'Подключаем…':'Проверить и подключить'}</button>
    {channelMessage?<p role="status" className="sw-channel-result">{channelMessage}</p>:null}
-  </details>
-  <nav className="sw-tabs" aria-label="Раздел серверной мастерской">
-   <button className={tab==='listings'?'active':''} onClick={()=>setTab('listings')}>Мои объявления ({mine.length})</button>
-   <button className={tab==='moderation'?'active':''} onClick={()=>setTab('moderation')}>Проверка</button>
-  </nav>
-  {tab==='listings'?<>
+  </details>:null}
+  </>:null}
+  {view==='profile'&&managed.length?<nav className="sw-tabs" aria-label="Управление сообществом">
+   <button className={tab==='listings'?'active':''} onClick={()=>setTab('listings')}>Настройки</button>
+   <button className={tab==='moderation'?'active':''} onClick={()=>{setSelectedCircle(managed[0].id);setTab('moderation');}}>Проверка</button>
+  </nav>:null}
+  {view==='listings'?<>
    <button type="button" className="sw-btn sw-primary" onClick={()=>setFormOpen(v=>!v)}>{formOpen?'Закрыть форму':'+ Разместить объявление'}</button>
    {formOpen&&<form className="sw-panel" onSubmit={e=>void save(e)}>
     <div className="sw-panel-head"><h2>{editId?'Изменить объявление':'Разместить объявление'}</h2></div>
-    <div className="sw-fields">
-     <label>Название товара<input required minLength={3} maxLength={120} value={draft.title} onChange={e=>field('title',e.target.value)} placeholder="Например, ноутбук ThinkPad"/></label>
-     <label>Цена, ₽<input required type="number" min={0} step=".01" value={draft.price} onChange={e=>field('price',e.target.value)}/></label>
-     <label>Город<input required disabled={!!editId} value={draft.city} onChange={e=>field('city',e.target.value)}/></label>
-     <label>Категория<select disabled={!!editId} value={draft.category} onChange={e=>field('category',e.target.value)}><option value="electronics">Электроника</option><option value="gaming">Игры</option><option value="fashion">Одежда</option><option value="home">Для дома</option><option value="transport">Транспорт</option><option value="hobby">Хобби</option><option value="auto">Авто</option></select></label>
-     <label className="sw-wide">Описание<textarea required maxLength={5000} rows={3} value={draft.description} onChange={e=>field('description',e.target.value)}/></label>
-    </div>
     <div className="sw-photo-picker">
       <label htmlFor="sw-create-photos">Фотографии · до 10 шт.</label>
       <input id="sw-create-photos" type="file" multiple accept="image/jpeg,image/png,image/webp"
@@ -267,7 +278,14 @@ export default function ServerWorkspace({createRequest=0}:{createRequest?:number
         }}/>
       <PhotoPreviews files={photoFiles}/>
       {photoFiles.length?<div className="sw-photo-chips">{photoFiles.map((file,i)=><span key={file.name+'-'+i}>{i+1}. {file.name}</span>)}</div>:null}
-      <small>Файлы отправляются до публикации. При ошибке черновик останется в базе.</small>
+      <small>Текст черновика сохраняется на этом устройстве. После перезапуска фотографии нужно выбрать заново.</small>
+    </div>
+    <div className="sw-fields">
+     <label>Название товара<input required minLength={3} maxLength={120} value={draft.title} onChange={e=>field('title',e.target.value)} placeholder="Например, ноутбук ThinkPad"/></label>
+     <label>Цена, ₽<input required type="number" min={0} step=".01" value={draft.price} onChange={e=>field('price',e.target.value)}/></label>
+     <label>Город<input required disabled={!!editId} value={draft.city} onChange={e=>field('city',e.target.value)}/></label>
+     <label>Категория<select disabled={!!editId} value={draft.category} onChange={e=>field('category',e.target.value)}><option value="electronics">Электроника</option><option value="gaming">Игры</option><option value="fashion">Одежда</option><option value="home">Для дома</option><option value="transport">Транспорт</option><option value="hobby">Хобби</option><option value="auto">Авто</option></select></label>
+     <label className="sw-wide">Описание<textarea required maxLength={5000} rows={3} value={draft.description} onChange={e=>field('description',e.target.value)}/></label>
     </div>
     {!editId&&<fieldset className="sw-circles"><legend>Разместить в кругах</legend>{communities.map(c=><label key={c.id}><input type="checkbox" checked={chosenCircles.includes(c.id)} onChange={()=>toggleCircle(c.id)}/><span>{c.name}</span><small>{c.city}</small></label>)}{!communities.length&&<div><p>Создайте первый круг. Вы станете его владельцем и сможете одобрять объявления во вкладке «Модерация кругов».</p><label>Название круга<input value={newCircleName} minLength={3} maxLength={80} onChange={e=>setNewCircleName(e.target.value)}/></label><button type="button" className="sw-btn sw-secondary" disabled={busy||newCircleName.trim().length<3} onClick={()=>void action(async()=>{
       const circle=await api<{id:string}>('/api/communities',user,{method:'POST',body:JSON.stringify({name:newCircleName.trim()})},Boolean(sessionUser));
@@ -277,9 +295,10 @@ export default function ServerWorkspace({createRequest=0}:{createRequest?:number
     {pendingDraftId&&!editId?<p className="sw-upload-progress">Черновик сохранён. Повторная отправка не создаст дубликат.</p>:null}
     <div className="sw-actions"><button className="sw-btn sw-primary" disabled={busy||loading||(!sessionUser&&!uuidOrEmpty(user))} type="submit">{busy?'Сохраняем…':editId?'Сохранить и проверить заново':'Создать и отправить'}</button>{editId&&<button className="sw-btn sw-secondary" type="button" onClick={()=>{setEditId(null);setPendingDraftId(null);setPhotoFiles([]);completedPhotos.current=0;setDraft(startDraft);}}>Отмена</button>}</div>
    </form>}
+   <nav className="sw-status-tabs" aria-label="Статус объявлений">{[{id:'active',name:'Активные'},{id:'pending',name:'На проверке'},{id:'draft',name:'Черновики'},{id:'sold',name:'Проданные'},{id:'rejected',name:'Отклонённые'}].map(t=><button type="button" key={t.id} aria-pressed={listingFilter===t.id} className={listingFilter===t.id?'selected':''} onClick={()=>setListingFilter(t.id)}>{t.name} <small>{mine.filter(l=>group(l)===t.id).length}</small></button>)}</nav>
    <div className="sw-panel">
-    <div className="sw-panel-head"><h2>Мои объявления</h2><span>{loading?'Обновление…':mine.length+' записей'}</span></div>
-    {mine.length?<div className="sw-list">{mine.map(l=><article className="sw-listing" key={l.id}>
+    <div className="sw-panel-head"><h2>Мои объявления</h2><span>{loading?'Обновление…':visible.length+' объявлений'}</span></div>
+    {visible.length?<div className="sw-list">{visible.map(l=><article className="sw-listing" key={l.id}>
       <div className="sw-item-top">{l.photo_url?<img src={l.photo_url} alt={"Фотография "+l.title} className="sw-cover" loading="lazy"/>:null}<div><h3>{l.title}</h3><p>{l.city} · {rub(l.price_kopecks)}</p></div><span className={'sw-status '+l.status}>{l.status==='active'&&!l.placements.some(p=>p.status==='approved')?'На проверке':statusText[l.status]||l.status}</span></div>
       {l.placements.some(p=>p.status==='pending')?<p>Ожидает одобрения владельцем круга. После проверки появится в каталоге.</p>:null}
       {l.placements.map(p=>p.channelStatus?<p key={'max-'+p.communityId} role="status">{p.channelStatus==='sent'?'✓ Опубликовано в канале MAX':p.channelStatus==='pending'?'Ожидает отправки в MAX':p.channelStatus==='sending'||p.channelStatus==='unknown'?'Проверьте канал: результат отправки уточняется':p.channelStatus==='failed'?'Не отправлено в MAX: '+p.channelError:'Публикация отменена'}</p>:null)}
@@ -289,17 +308,17 @@ export default function ServerWorkspace({createRequest=0}:{createRequest?:number
        {(l.status==='draft'||l.status==='active')&&<button className="sw-btn sw-secondary" disabled={busy} onClick={()=>void submit(l)}>Отправить в круги</button>}
        {l.status==='active'&&<button className="sw-btn sw-secondary" disabled={busy} onClick={()=>void sold(l)}>Продано</button>}
       </div>
-     </article>)}</div>:<div className="sw-empty">В базе нет ваших объявлений. Создайте первое через форму выше.</div>}
+     </article>)}</div>:<div className="sw-empty">В этом разделе пока нет объявлений.</div>}
    </div>
-  </>:<div className="sw-panel">
+  </>:tab==='moderation'&&managed.length?<div className="sw-panel">
    <div className="sw-panel-head"><h2>Очередь модерации</h2><button className="sw-btn sw-secondary" type="button" onClick={()=>void fetchQueue()} disabled={busy}>↻ Проверить очередь</button></div>
-   <label className="sw-select-label">Сообщество<select value={selectedCircle} onChange={e=>setSelectedCircle(e.target.value)}>{communities.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+   <label className="sw-select-label">Сообщество<select value={selectedCircle} onChange={e=>setSelectedCircle(e.target.value)}>{managed.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
    {queue.length?<div className="sw-list">{queue.map(item=><article className="sw-listing" key={item.placement_id}>
       <div className="sw-item-top"><div><h3>{item.title}</h3><p>{rub(item.price_kopecks)} · {item.city}</p></div><span className="sw-status pending">На проверке</span></div>
       <p>{item.description}</p>
       <div className="sw-actions"><button className="sw-btn sw-primary" disabled={busy} onClick={()=>void moderate(item,'approved')}>✓ Одобрить</button><button className="sw-btn sw-danger" disabled={busy} onClick={()=>void moderate(item,'rejected')}>Отклонить</button></div>
      </article>)}</div>:<div className="sw-empty">Очередь пуста или недоступна для выбранного пользователя.</div>}
-  </div>}
+  </div>:null}
   </>}
  </section>;
 

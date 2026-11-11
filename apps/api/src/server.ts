@@ -24,6 +24,10 @@ app.get('/health',async()=>({ok:true,service:'yorvi-api',version:'2.0.0-alpha.1'
 registerMaxAuthentication(app,pool);
 const auth=currentUserId;
 
+app.get('/api/me/managed-communities',async(req,reply)=>{
+ const user=auth(req);if(!user)return reply.code(401).send({error:'Unauthorized'});
+ const result=await pool.query(`SELECT DISTINCT c.id,c.name,c.city FROM communities c LEFT JOIN community_roles r ON r.community_id=c.id AND r.user_id=$1 WHERE c.owner_id=$1 OR r.role IN ('owner','moderator') ORDER BY c.name`,[user]);return {items:result.rows};
+});
 app.get('/api/me/contact',async(req,reply)=>{
  const userId=auth(req);if(!userId)return reply.code(401).send({error:'Unauthorized'});
  const result=await pool.query('SELECT max_contact_url FROM users WHERE id=$1',[userId]);

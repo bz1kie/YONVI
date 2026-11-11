@@ -13,6 +13,9 @@ let listing;
 try{
  let ready=false;for(let i=0;i<60;i++){if(server.exitCode!==null)throw Error(errors);try{const r=await req('/conversations');if(r.status===200){ready=true;break;}}catch{}await sleep(150);}assert.ok(ready);
  assert.equal((await req('/conversations',null)).status,401);
+ assert.equal((await req('/me/managed-communities',null)).status,401);
+ assert.equal((await req('/me/managed-communities',other)).body.items.length,0);
+ assert.ok((await req('/me/managed-communities',seller)).body.items.some(c=>c.id===circle));
  assert.equal((await req('/me/message-notifications',null)).status,401);
  assert.equal((await req('/me/message-notifications',seller)).body.enabled,false);
  assert.equal((await req('/me/message-notifications',seller,{enabled:true},'PUT')).status,200);
