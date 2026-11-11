@@ -157,10 +157,16 @@ const LAVOSE_BANNERS = [
 ] as const;
 function LavoseBannerCarousel({onCreate,onCatalog,onNearby,onCircles}:{onCreate:()=>void;onCatalog:()=>void;onNearby:()=>void;onCircles:()=>void}){
  const [active,setActive]=React.useState(0);
+ const [paused,setPaused]=React.useState(false);
+ React.useEffect(()=>{
+  if(paused||typeof window==='undefined'||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  const timer=window.setInterval(()=>setActive(v=>(v+1)%LAVOSE_BANNERS.length),7000);
+  return ()=>window.clearInterval(timer);
+ },[paused]);
  const item=LAVOSE_BANNERS[active];
  const move=(n:number)=>setActive(v=>(v+n+LAVOSE_BANNERS.length)%LAVOSE_BANNERS.length);
  const action=()=>{if(active===1)onCreate();else if(active===2)onNearby();else if(active===3)onCircles();else if(active===4)window.open('https://max.ru/se14029050_1_bot','_blank','noopener,noreferrer');else onCatalog();};
- return <section className={'lavose-banners lavose-banners-'+item.theme} aria-label="Баннеры Лавось">
+ return <section className={'lavose-banners lavose-banners-'+item.theme} aria-label="Баннеры Лавось" aria-roledescription="карусель" onMouseEnter={()=>setPaused(true)} onMouseLeave={()=>setPaused(false)} onFocusCapture={()=>setPaused(true)} onBlurCapture={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node))setPaused(false);}}>
   <div className="lavose-banners-content" key={active}>
    <span className="lavose-banners-tag">{item.tag}</span>
    <h1>{item.title}<br/><em>{item.accent}</em></h1>
