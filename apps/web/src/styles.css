@@ -305,3 +305,39 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
  .lavose-feature-benefits b{font-size:15px}
  .catalog-screen .product-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
+
+
+/* V4 desktop reference fixes: fluid width, no overlaps, clear categories */
+@media(min-width:1025px){
+ html,body,#root{width:100%;max-width:none;margin:0}
+ .app-shell{display:block!important;width:100%!important;max-width:none!important;min-width:0}
+ .sidebar{width:100%!important;max-width:none!important;box-sizing:border-box;justify-content:space-between}
+ .main-shell{display:flex!important;flex-direction:column;width:100%!important;max-width:none!important;margin:0!important;min-width:0}
+ .main-shell>.page-content{display:block;width:100%!important;max-width:1920px!important;min-width:0;box-sizing:border-box;margin-inline:auto!important;padding-inline:clamp(24px,2.2vw,44px)!important}
+ .catalog-screen{width:100%;max-width:none;min-width:0}
+ .lavose-feature-row{width:100%;grid-template-columns:minmax(0,4fr) minmax(260px,1fr)}
+ .lavose-feature-main{min-width:0;min-height:330px}
+ .lavose-feature-copy{max-width:39%}
+ .lavose-feature-copy h1{font-size:clamp(32px,3vw,49px);overflow-wrap:normal}
+ .lavose-feature-mascot{left:37%;width:31%;height:113%;bottom:-20%;object-fit:contain}
+ .lavose-feature-benefits{right:2%;width:27%;z-index:3}
+ .lavose-max-promo{min-width:0}
+ .catalog-screen .catalog-categories{overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+ .catalog-screen .catalog-categories::-webkit-scrollbar{display:none}
+ .catalog-screen .catalog-categories button{flex:1 0 112px;min-width:112px;max-width:180px;min-height:116px}
+ .lavose-category-emoji{display:flex;align-items:center;justify-content:center;height:65px;font-size:46px;line-height:1;filter:drop-shadow(0 7px 6px #0007)}
+ .catalog-screen .catalog-categories button:first-child .lavose-category-emoji{color:#c8ff28;font-size:52px}
+ .catalog-screen .catalog-categories button b{font-size:13px}
+ .catalog-screen .product-grid{width:100%;grid-template-columns:repeat(6,minmax(0,1fr))}
+}
+@media(min-width:1025px) and (max-width:1450px){
+ .lavose-feature-copy h1{font-size:clamp(28px,3vw,42px)}
+ .lavose-feature-mascot{left:35%;width:34%}
+ .catalog-screen .product-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+}
+@media(min-width:1025px) and (max-width:1180px){
+ .lavose-feature-row{grid-template-columns:minmax(0,3fr) minmax(210px,1fr)}
+ .lavose-feature-copy{max-width:43%}
+ .lavose-feature-mascot{left:39%;width:30%}
+ .catalog-screen .product-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
