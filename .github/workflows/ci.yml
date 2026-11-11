@@ -31,6 +31,7 @@ jobs:
       - run: npm run build
       - run: node --test scripts/max-channel-test.mjs
       - run: node --test scripts/max-publish-test.mjs
+      - run: node --test scripts/conversation-notifications-test.mjs
       - run: node --test scripts/max-auth-test.mjs
       - run: node --test scripts/photo-policy-test.mjs
       - name: Verify production migrations are repeatable
@@ -43,6 +44,7 @@ jobs:
       - run: node scripts/prepare-db.mjs
       - run: node scripts/integration-test.mjs
       - run: node scripts/integration-write-test.mjs
+      - run: node scripts/integration-conversations-test.mjs
       - run: node scripts/integration-max-auth-test.mjs
       - name: Start isolated S3 storage for photo integration
         run: |

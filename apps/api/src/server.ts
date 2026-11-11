@@ -1,3 +1,5 @@
+import { sendConversationNotifications } from './conversation-notifications.js';
+import { registerConversationRoutes } from './conversation-routes.js';
 import { publishApproved } from './max-publish.js';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
@@ -147,9 +149,10 @@ app.post('/api/me/channel/connect',async(req,reply)=>{
 registerMarketplaceRoutes(app,pool,auth);
 registerPhotoRoutes(app,pool,auth);
 registerFavoritesRoutes(app,pool,auth);
+registerConversationRoutes(app,pool,auth);
 
 
-const publish=()=>publishApproved(pool).catch(()=>app.log.warn("MAX publication interrupted; inspect delivery status"));
+const publish=()=>Promise.all([publishApproved(pool),sendConversationNotifications(pool)]).catch(()=>app.log.warn("MAX publication interrupted; inspect delivery status"));
 void publish();
 const publishTimer=setInterval(()=>void publish(),30000);
 publishTimer.unref();
