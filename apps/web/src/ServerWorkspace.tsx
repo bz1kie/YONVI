@@ -51,6 +51,8 @@ async function api<T>(path:string, user:string, init:RequestInit = {}, authentic
  return payload as T;
 }
 export default function ServerWorkspace({createRequest=0}:{createRequest?:number}) {
+ const [channelMessage,setChannelMessage]=useState('');
+ const [channelBusy,setChannelBusy]=useState(false);
  const [formOpen,setFormOpen]=useState(createRequest>0);
  useEffect(()=>{if(createRequest>0)setFormOpen(true);},[createRequest]);
  const [user,setUser]=useState(()=>{try{return localStorage.getItem(USER_STORAGE)||DEV_USER;}catch{return DEV_USER;}});
@@ -207,10 +209,18 @@ export default function ServerWorkspace({createRequest=0}:{createRequest?:number
    <button className="sw-btn sw-secondary" type="button" disabled={!uuidOrEmpty(user)||busy} onClick={()=>{try{localStorage.setItem(USER_STORAGE,user);}catch{}void fetchData();}}>Применить</button>
   </div>:null}
   {alert&&<div role="status" className={'sw-alert sw-'+alert.kind}>{alert.text}</div>}
-  <details className="sw-panel"><summary>Канал MAX {communities.some(c=>c.max_channel_url)?'· подключён':''}</summary>
+  <details className="sw-panel" open={!communities.some(c=>c.max_channel_url)}><summary>Канал MAX {communities.some(c=>c.max_channel_url)?'· подключён':''}</summary>
    {communities.filter(c=>c.max_channel_url).map(c=><p key={c.id}><a href={c.max_channel_url} target="_blank" rel="noreferrer">{c.max_channel_title||c.name} ↗</a></p>)}
    <p>Лаврик должен быть администратором канала. Подключение доступно владельцу канала.</p>
-   <button type="button" className="sw-btn sw-secondary" disabled={busy} onClick={()=>void action(async()=>{await api('/api/me/channel/connect',user,{method:'POST'},Boolean(sessionUser));},'Канал MAX подключён к кругу. Автопубликация постов пока выключена.')}>Проверить и подключить</button>
+   <button type="button" className="sw-btn sw-secondary" disabled={channelBusy} onClick={async()=>{
+    setChannelBusy(true);setChannelMessage('Проверяем доступ Лаврика…');
+    try{
+     const result=await api<{title:string}>('/api/me/channel/connect',user,{method:'POST'},Boolean(sessionUser));
+     setChannelMessage('Подключён: '+result.title);await fetchData();
+    }catch(error){setChannelMessage(errorText(error));}
+    finally{setChannelBusy(false);}
+   }}>{channelBusy?'Подключаем…':'Проверить и подключить'}</button>
+   {channelMessage?<p role="status" className="sw-channel-result">{channelMessage}</p>:null}
   </details>
   <nav className="sw-tabs" aria-label="Раздел серверной мастерской">
    <button className={tab==='listings'?'active':''} onClick={()=>setTab('listings')}>Мои объявления ({mine.length})</button>

@@ -32,3 +32,12 @@ test('A verified owner links their only existing circle without publishing',asyn
  assert(queries.some(sql=>sql.startsWith('INSERT INTO max_channel_links')));
  assert(!queries.some(sql=>sql.startsWith('INSERT INTO communities')));
 });
+
+test('Report authentication failure before suggesting channel administrator rights',async()=>{
+ global.fetch=async()=>({ok:false,status:401});
+ await assert.rejects(connectConfiguredChannel({},'owner'),/MAX_HTTP_401.*бот/);
+});
+test('Distinguish TLS failure from missing channel membership',async()=>{
+ global.fetch=async()=>{throw Object.assign(new Error('fetch failed'),{cause:{code:'UNABLE_TO_VERIFY_LEAF_SIGNATURE'}});};
+ await assert.rejects(connectConfiguredChannel({},'owner'),/MAX_TLS/);
+});
