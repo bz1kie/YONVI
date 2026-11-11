@@ -23,3 +23,14 @@
  .lavose-banners:after{background:linear-gradient(180deg,#071016 0%,#071016ed 35%,#07101688 62%,transparent 100%)}
  .lavose-banners-content{padding-top:26px}
 }
+
+/* Branded dimensional category illustrations; CSS-only and responsive. */
+.catalog-categories button{position:relative;overflow:hidden;transition:transform .18s ease,border-color .18s ease,background .18s ease}
+.catalog-categories button:hover{transform:translateY(-3px);border-color:#c8ff2880}
+.lavose-category-art{position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:76px;isolation:isolate}
+.lavose-category-art-glow{position:absolute;width:74px;height:50px;border-radius:50%;background:radial-gradient(ellipse,#c8ff2840 0%,transparent 72%);filter:blur(10px);transform:translateY(10px);z-index:-1}
+.lavose-category-art-object{font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;font-size:52px;line-height:1;display:block;transform:rotate(-7deg);filter:drop-shadow(0 13px 6px #0008);transition:transform .18s ease}
+.catalog-categories button:hover .lavose-category-art-object{transform:rotate(-3deg) translateY(-5px) scale(1.06)}
+.lavose-category-art-all .lavose-category-art-object{font-family:system-ui,sans-serif;font-size:48px;font-weight:900;color:#c8ff28;text-shadow:0 3px 0 #719a00,0 8px 12px #000b}
+.catalog-categories button:focus-visible{outline:2px solid #c8ff28;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.catalog-categories button,.lavose-category-art-object{transition:none}}
