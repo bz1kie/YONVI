@@ -28,8 +28,8 @@ interface State {
   toast: string; helpOpen: boolean; copiedLink: boolean; apiStatus: 'checking' | 'live' | 'demo' | 'error'; serverCount: number; gallery: string[]; galleryIndex: number; serverCircles: ServerCircle[]; selectedCommunityId: string | null; favoriteListings: Listing[]; favoritesAuthenticated: boolean;
 }
 const CAT = [
-  {id:'all',name:'Всё',emoji:'✦',bg:'violet'},
-  {id:'electronics',name:'Электроника',emoji:'📱',bg:'blue'},
+  {id:'all',name:'Все категории',emoji:'▦',bg:'violet'},
+  {id:'electronics',name:'Электроника',emoji:'🎧',bg:'blue'},
   {id:'gaming',name:'Игры',emoji:'🎮',bg:'lavender'},
   {id:'fashion',name:'Одежда',emoji:'👟',bg:'pink'},
   {id:'home',name:'Для дома',emoji:'🛋️',bg:'peach'},
@@ -322,7 +322,7 @@ class App extends React.Component<{},State> {
  renderCatalog(){const items=this.filterItems(this.state.listings);return <div className="catalog-screen">
   {!this.state.query&&this.state.filters.category==='all'?<div className="lavose-feature-row"><section className="lavose-feature-main"><div className="lavose-feature-copy"><h1>Маркетплейс<br/>находок <em>рядом</em></h1><p>Покупай, продавай и находи<br/>интересные вещи в своём городе<br/>и своих кругах</p><button className="lavose-feature-cta" onClick={()=>this.openCreate()}><Icon name="plus" size={22}/>Разместить объявление</button></div><img className="lavose-feature-mascot" src="assets/yori-raccoon-large.webp" alt="Лаврик — енот Лавось"/><div className="lavose-feature-benefits"><div><Icon name="map" size={25}/><span><b>Рядом</b><small>Объявления из твоего города</small></span></div><div><Icon name="users" size={25}/><span><b>В кругах</b><small>Тематические сообщества</small></span></div><div><Icon name="bolt" size={25}/><span><b>Выгодно</b><small>Хорошие находки каждый день</small></span></div></div></section><aside className="lavose-max-promo"><h2>Открой Лавось<br/>в <em>MAX</em></h2><p>Быстро, удобно<br/>и всегда под рукой</p><a href="https://max.ru/se14029050_1_bot" target="_blank" rel="noopener noreferrer" aria-label="Открыть Лавось в MAX"><span className="lavose-max-symbol">MAX</span><span>Открыть приложение ↗</span></a></aside></div>:null}
   <div className="catalog-location legacy-location"><Icon name="map" size={16}/><select aria-label="Город поиска" value={this.state.filters.city} onChange={e=>this.setFilter({city:e.target.value})}><option value="all">Все города</option>{Array.from(new Set(['Воронеж','Москва','Липецк',...this.state.listings.map(l=>l.city)])).map(city=><option key={city}>{city}</option>)}</select></div>
-  <div id="lavose-categories" className="catalog-categories" aria-label="Категории">{CAT.map(c=><button type="button" key={c.id} aria-pressed={this.state.filters.category===c.id} className={this.state.filters.category===c.id?'selected':''} onClick={()=>this.setFilter({category:c.id})}><span className={'category-art category-art-'+c.id} aria-hidden="true"/><b>{c.name}</b></button>)}</div>
+  <div id="lavose-categories" className="catalog-categories" aria-label="Категории">{CAT.map(c=><button type="button" key={c.id} aria-pressed={this.state.filters.category===c.id} className={this.state.filters.category===c.id?'selected':''} onClick={()=>this.setFilter({category:c.id})}><span className="lavose-category-emoji" aria-hidden="true">{c.emoji}</span><b>{c.name}</b></button>)}</div>
   <div className={'catalog-filters '+(this.state.filterOpen?'expanded':'')}>{this.renderFilterbar()}
    {this.state.filterOpen&&this.state.serverCircles.length?<div className="yorvi-server-circles"><label htmlFor="yorvi-server-circle">Сообщество</label><select id="yorvi-server-circle" value={this.state.selectedCommunityId||''} onChange={e=>this.selectServerCircle(e.target.value||null)}><option value="">Все сообщества</option>{this.state.serverCircles.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select></div>:null}
   </div>
