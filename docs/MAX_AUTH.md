@@ -1,6 +1,6 @@
-# MAX Mini App: серверная авторизация YONVI
+# MAX Mini App: серверная авторизация LAVOSE
 
-Статус: разработческая реализация. Бот YONVI создан и опубликован в MAX по скриншотам владельца; Mini App ещё не подключено к production HTTPS и backend.
+Статус: разработческая реализация. Бот LAVOSE создан и опубликован в MAX по скриншотам владельца; Mini App ещё не подключено к production HTTPS и backend.
 
 **Первичные источники:** [MAX: валидация данных](https://dev.max.ru/docs/webapps/validation/), [MAX Bridge](https://dev.max.ru/docs/webapps/bridge/), [подключение мини-приложения](https://dev.max.ru/docs/webapps/introduction).
 
@@ -37,7 +37,7 @@ ALLOW_DEMO_AUTH=false
 Пошаговое подключение: [MAX Mini App Deployment](MAX_DEPLOY.md).
 
 ### Логика входа
-1. Пользователь открывает YONVI **из MAX**.
+1. Пользователь открывает LAVOSE **из MAX**.
 2. MAX Bridge выставляет `window.WebApp.initData`.
 3. Frontend отправляет эту строку в POST `/api/auth/max`.
 4. Сервер сверяет подпись, свежесть, личность пользователя.

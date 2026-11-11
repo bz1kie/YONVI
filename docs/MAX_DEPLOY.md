@@ -1,6 +1,6 @@
-# YONVI — подключение Mini App к боту MAX
+# LAVOSE — подключение Mini App к боту MAX
 
-Статус на 10.11.2026: **YONVI развёрнут на Render Free: https://yonvi.onrender.com/**. PostgreSQL размещён на Neon Free через Vercel Marketplace. Сайт в браузере подтвердил подключение к API и PostgreSQL (0 объявлений). Вход внутри MAX и привязка URL в кабинете MAX ещё требуют проверки.
+Статус на 10.11.2026: **LAVOSE развёрнут на Render Free: https://yonvi.onrender.com/**. PostgreSQL размещён на Neon Free через Vercel Marketplace. Сайт в браузере подтвердил подключение к API и PostgreSQL (0 объявлений). Вход внутри MAX и привязка URL в кабинете MAX ещё требуют проверки.
 
 Deploy workflow: `.github/workflows/render.yml`. Render service: `srv-dbpi0srncjis738va87g`. Neon project: `autumn-glitter-01011321`. Vercel store: `store_i916E8mGoEmPohNM`.
 
@@ -12,14 +12,14 @@ Deploy workflow: `.github/workflows/render.yml`. Render service: `srv-dbpi0srncj
 - [MAX Bridge](https://dev.max.ru/docs/webapps/bridge/)
 
 ## Уже готово
-- Бот **YONVI | Объявления** создан и опубликован (согласно скриншотам владельца 10.11.2026), никнейм на момент скриншота `@se14029050_1_bot`.
+- Бот **LAVOSE | Объявления** создан и опубликован (согласно скриншотам владельца 10.11.2026), никнейм на момент скриншота `@se14029050_1_bot`.
 - Frontend подключает MAX Bridge и передаёт **исходный подписанный** `window.WebApp.initData` на backend.
 - Fastify проверяет HMAC, срок действия подписи, создаёт/обновляет пользователя в PostgreSQL, выдаёт HttpOnly cookie.
 - Сценарии объявления и модерации используют серверные сессии. В CI используются исключительно тестовые фиктивные ключи.
 
 ## 1. Развернуть HTTPS
 
-Для существующего React/Fastify/PostgreSQL добавлен готовый шаблон Docker Compose + Caddy: [развёртывание YONVI на VPS](PRODUCTION_VPS.md). Домен и VPS пока не настроены.
+Для существующего React/Fastify/PostgreSQL добавлен готовый шаблон Docker Compose + Caddy: [развёртывание LAVOSE на VPS](PRODUCTION_VPS.md). Домен и VPS пока не настроены.
 
 Разместить frontend и backend под **одним HTTPS origin** (например, `https://<ваш-домен>`):
 - `/` → собранный `apps/web/dist` (Vite/React);
@@ -60,7 +60,7 @@ GitHub repository secret `MAX_YONVI_TOKEN` **не поступает автом�
 
 По актуальной документации MAX:
 1. Открыть [MAX для партнёров](https://business.max.ru/) → **Чат-боты**.
-2. Выбрать бота **YONVI | Объявления** → **⋮ → Настройки**.
+2. Выбрать бота **LAVOSE | Объявления** → **⋮ → Настройки**.
 3. Вставить **реальный HTTPS URL** запущенного приложения.
 4. Выбрать кнопку открытия **«Открыть»** и сохранить.
 

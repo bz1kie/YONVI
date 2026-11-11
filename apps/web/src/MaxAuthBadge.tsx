@@ -48,8 +48,8 @@ export default function MaxAuthBadge(){
  if(status==='loading')return <span className="max-auth-badge" aria-label="Проверка входа MAX">MAX · проверяем вход</span>;
  if(status==='signed-in'&&user)return <div className="max-auth-badge max-auth-active" title="Учётная запись MAX подтверждена сервером">
   <span>✓ MAX · {user.nickname}</span>
-  <button type="button" aria-label="Выйти из YONVI" onClick={()=>void logout()}>Выйти</button>
+  <button type="button" aria-label="Выйти из LAVOSE" onClick={()=>void logout()}>Выйти</button>
  </div>;
  if(status==='error')return <button type="button" className="max-auth-badge" title={error} onClick={()=>void launch()}>MAX · ошибка входа ↻</button>;
- return <span className="max-auth-badge" title="Откройте YONVI через Mini App бота MAX для входа">Вход через MAX</span>;
+ return <span className="max-auth-badge" title="Откройте LAVOSE через Mini App бота MAX для входа">Вход через MAX</span>;
 }

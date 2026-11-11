@@ -69,7 +69,7 @@ export default function ServerWorkspace() {
    window.addEventListener('yorvi:auth-change',onAuth);
    return ()=>window.removeEventListener('yorvi:auth-change',onAuth);
  },[refreshAuth]);
- const [newCircleName,setNewCircleName]=useState('Общий каталог YONVI');
+ const [newCircleName,setNewCircleName]=useState('Общий каталог LAVOSE');
  const [communities,setCommunities]=useState<Community[]>([]);
  const [mine,setMine]=useState<MyListing[]>([]);
  const [queue,setQueue]=useState<QueueItem[]>([]);
@@ -191,14 +191,14 @@ export default function ServerWorkspace() {
  const field=(key:keyof Draft,value:string)=>setDraft(prev=>({...prev,[key]:value}));
  return <section className="server-workspace">
   <div className="sw-heading">
-   <div><span className="sw-kicker">YORI 2.0 · МОЙ ПРОФИЛЬ</span><h1>Личный кабинет<span>.</span></h1>
+   <div><span className="sw-kicker">LAVOSE · МОЙ ПРОФИЛЬ</span><h1>Личный кабинет<span>.</span></h1>
      <p>Мои объявления, сообщества и модерация — данные из PostgreSQL.</p></div>
    <button className="sw-btn sw-secondary" type="button" disabled={busy||loading} onClick={()=>void fetchData()}>↻ Обновить</button>
   </div>
   {sessionUser?
     <div className="sw-alert sw-success">Вход подтверждён через MAX: <b>{sessionUser.nickname}</b>. Все изменения сохраняются на сервере.</div>:
     import.meta.env.DEV?<div className="sw-warning"><b>Локальная разработка.</b> Для тестирования используйте тестовую БД и ALLOW_DEMO_AUTH=true. Это не реальный вход MAX.</div>:
-    <div className="sw-warning"><b>Нужен вход через MAX.</b> Откройте YORI из мини-приложения MAX. Без подтверждённой сессии действия с объявлениями недоступны.</div>}
+    <div className="sw-warning"><b>Нужен вход через MAX.</b> Откройте Лавось из мини-приложения MAX. Без подтверждённой сессии действия с объявлениями недоступны.</div>}
   {!sessionUser&&!import.meta.env.DEV?<div className="sw-panel"><h2>Войдите через MAX</h2><p>Личный кабинет станет доступен после подтверждения учётной записи.</p><button className="sw-btn sw-secondary" onClick={()=>void refreshAuth()}>Проверить вход</button></div>:<>
   {!sessionUser&&import.meta.env.DEV?<div className="sw-user">
    <label htmlFor="sw-user">UUID тестового пользователя</label>
