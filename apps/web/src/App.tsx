@@ -146,6 +146,31 @@ const initState = ():State => {
   loginOpen:false,locating:false,cart:(()=>{const v=safeGet('lavose-cart-v1');return Array.isArray(v)?v.filter((id:unknown)=>typeof id==='string').slice(0,100):[];})(),toast:'',helpOpen:false,copiedLink:false,apiStatus:'checking',serverCount:0,gallery:[],galleryIndex:0,serverCircles:[],selectedCommunityId:null,favoriteListings:[],favoritesAuthenticated:false
  };
 };
+
+const LAVOSE_BANNERS = [
+ {title:'Находи своё.',accent:'Рядом.',description:'Техника, одежда, вещи для дома и другие находки — в одном месте.',cta:'Смотреть объявления',theme:'find',tag:'МАРКЕТПЛЕЙС НАХОДОК',emoji:'🛒'},
+ {title:'Вещи без дела?',accent:'Пора продавать!',description:'Освободи место для нового. Размести объявление и найди покупателя.',cta:'Разместить объявление',theme:'sell',tag:'ПРОДАВАЙ ПРОЩЕ',emoji:'📦'},
+ {title:'Классные находки',accent:'совсем рядом.',description:'Ищи интересные предложения в своём городе и по соседству.',cta:'Найти рядом',theme:'near',tag:'В ТВОЁМ ГОРОДЕ',emoji:'📍'},
+ {title:'Среди своих —',accent:'ещё интереснее.',description:'Находи предложения в тематических кругах и сообществах.',cta:'Смотреть круги',theme:'circles',tag:'СООБЩЕСТВА',emoji:'🤝'},
+ {title:'Лавось всегда',accent:'под рукой.',description:'Открывай объявления и находки прямо в MAX.',cta:'Открыть в MAX',theme:'max',tag:'ЛАВОСЬ В MAX',emoji:'📱'}
+] as const;
+function LavoseBannerCarousel({onCreate,onCatalog,onNearby,onCircles}:{onCreate:()=>void;onCatalog:()=>void;onNearby:()=>void;onCircles:()=>void}){
+ const [active,setActive]=React.useState(0);
+ const item=LAVOSE_BANNERS[active];
+ const move=(n:number)=>setActive(v=>(v+n+LAVOSE_BANNERS.length)%LAVOSE_BANNERS.length);
+ const action=()=>{if(active===1)onCreate();else if(active===2)onNearby();else if(active===3)onCircles();else if(active===4)window.open('https://max.ru/se14029050_1_bot','_blank','noopener,noreferrer');else onCatalog();};
+ return <section className={'lavose-banners lavose-banners-'+item.theme} aria-label="Баннеры Лавось">
+  <div className="lavose-banners-content" key={active}>
+   <span className="lavose-banners-tag">{item.tag}</span>
+   <h1>{item.title}<br/><em>{item.accent}</em></h1>
+   <p>{item.description}</p>
+   <button type="button" className="lavose-banners-action" onClick={action}>{item.cta}<span aria-hidden="true"> →</span></button>
+  </div>
+  <div className="lavose-banners-art" aria-hidden="true"><div className="lavose-banners-glow"/><img src="/assets/yori-raccoon-large.webp" alt=""/><span className="lavose-banners-prop">{item.emoji}</span></div>
+  <div className="lavose-banners-controls"><button type="button" onClick={()=>move(-1)} aria-label="Предыдущий баннер">‹</button><div className="lavose-banners-dots">{LAVOSE_BANNERS.map((b,i)=><button key={b.theme} type="button" aria-label={'Баннер '+(i+1)+': '+b.title} aria-current={active===i?'true':undefined} className={active===i?'active':''} onClick={()=>setActive(i)}/>)}</div><button type="button" onClick={()=>move(1)} aria-label="Следующий баннер">›</button></div>
+ </section>;
+}
+
 class App extends React.Component<{},State> {
  constructor(props:{}){super(props);this.state=initState();}
  componentDidUpdate(_prevProps:{},prev:State){
@@ -321,7 +346,7 @@ class App extends React.Component<{},State> {
  </>;}
  renderFilterbar(){const f=this.state.filters;return this.state.filterOpen?<div className="advanced-filters" aria-label="Фильтры поиска"><div className="filter-field"><label htmlFor="price-min">Цена от, ₽</label><input id="price-min" type="number" min="0" placeholder="0" value={f.minPrice} onChange={e=>this.setFilter({minPrice:e.target.value})}/></div><div className="filter-field"><label htmlFor="price-max">Цена до, ₽</label><input id="price-max" type="number" min="0" placeholder="Любая" value={f.maxPrice} onChange={e=>this.setFilter({maxPrice:e.target.value})}/></div><button className="btn btn-soft" onClick={()=>{this.setState({filters:{...DEFAULT_FILTERS},query:''});this.selectServerCircle(null);}}>Сбросить</button><button className="btn btn-primary" onClick={()=>this.setState({filterOpen:false})}>Показать</button></div>:null;}
  renderCatalog(){const baseItems=this.filterItems(this.state.listings);const tab=this.state.catalogTab;const currentCity=this.state.filters.city;const subscribed=this.state.circles.filter(c=>c.isJoined).map(c=>c.id);const items=baseItems.filter(l=>tab==='all'||(tab==='nearby'?(currentCity!=='all'&&l.city===currentCity):tab==='circles'?Object.entries(l.placements||{}).some(([id,status])=>id!=='global'&&status==='approved'):Object.entries(l.placements||{}).some(([id,status])=>subscribed.includes(id)&&status==='approved')));return <div className="catalog-screen">
-  {!this.state.query&&this.state.filters.category==='all'?<div className="lavose-feature-row"><section className="lavose-feature-main"><div className="lavose-feature-copy"><h1>Маркетплейс<br/>находок <em>рядом</em></h1><p>Покупай, продавай и находи<br/>интересные вещи в своём городе<br/>и своих кругах</p><button className="lavose-feature-cta" onClick={()=>this.openCreate()}><Icon name="plus" size={22}/>Разместить объявление</button></div><img className="lavose-feature-mascot" src="assets/yori-raccoon-large.webp" alt="Лаврик — енот Лавось"/><div className="lavose-feature-benefits"><div><Icon name="map" size={25}/><span><b>Рядом</b><small>Объявления из твоего города</small></span></div><div><Icon name="users" size={25}/><span><b>В кругах</b><small>Тематические сообщества</small></span></div><div><Icon name="bolt" size={25}/><span><b>Выгодно</b><small>Хорошие находки каждый день</small></span></div></div></section><aside className="lavose-max-promo"><h2>Открой Лавось<br/>в <em>MAX</em></h2><p>Быстро, удобно<br/>и всегда под рукой</p><div className="lavose-max-phone" aria-hidden="true"><div className="lavose-max-phone-camera"/><div className="lavose-max-phone-screen"><span className="lavose-max-phone-logo">Л</span><strong>Лавось</strong><small>Находки рядом</small></div></div><a href="https://max.ru/se14029050_1_bot" target="_blank" rel="noopener noreferrer" aria-label="Открыть Лавось в MAX"><span className="lavose-max-symbol">MAX</span><span>Открыть приложение ↗</span></a></aside></div>:null}
+  {!this.state.query&&this.state.filters.category==='all'?<LavoseBannerCarousel onCreate={()=>this.openCreate()} onCatalog={()=>this.go('catalog')} onNearby={()=>{this.setState({catalogTab:'nearby'});this.go('catalog');}} onCircles={()=>this.go('circles')}/>:null}
   <div className="catalog-location legacy-location"><Icon name="map" size={16}/><select aria-label="Город поиска" value={this.state.filters.city} onChange={e=>this.setFilter({city:e.target.value})}><option value="all">Все города</option>{Array.from(new Set(['Воронеж','Москва','Липецк',...this.state.listings.map(l=>l.city)])).map(city=><option key={city}>{city}</option>)}</select></div>
   <div id="lavose-categories" className="catalog-categories" aria-label="Категории">{CAT.map(c=><button type="button" key={c.id} aria-pressed={this.state.filters.category===c.id} className={this.state.filters.category===c.id?'selected':''} onClick={()=>this.setFilter({category:c.id})}><span className="lavose-category-emoji" aria-hidden="true">{c.emoji}</span><b>{c.name}</b></button>)}</div>
   <div className={'catalog-filters '+(this.state.filterOpen?'expanded':'')}>{this.renderFilterbar()}
