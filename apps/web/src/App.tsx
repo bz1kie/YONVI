@@ -156,6 +156,7 @@ class App extends React.Component<{},State> {
   seller:l.seller_name||'Продавец',mine:false,views:0,
   createdAt:new Date(l.created_at).getTime()||Date.now(),placements:{global:'approved'},image:l.photo_url||undefined
  });
+ initialLinkOpened=false;
  refreshCatalog=()=>{
   const circle=this.state.selectedCommunityId||undefined;
   fetchPublicListings({communityId:circle}).then(({items})=>{
@@ -164,7 +165,13 @@ class App extends React.Component<{},State> {
     this.setState(state=>({
       listings:remote,apiStatus:demo?'demo':'live',serverCount:items.length,
       selectedListing:state.selectedListing&&remote.some(l=>l.id===state.selectedListing)?state.selectedListing:null
-    }));
+    }),()=>{
+      if(!this.initialLinkOpened){
+        this.initialLinkOpened=true;
+        const id=new URLSearchParams(window.location.search).get('listing');
+        if(id&&/^[0-9a-f-]{36}$/i.test(id)){this.setState({page:'catalog'});this.openListing(id);}
+      }
+    });
   }).catch(()=>this.setState({
     listings:import.meta.env.DEV?this.state.listings:[],apiStatus:import.meta.env.DEV?'demo':'error',serverCount:0
   }));
@@ -211,8 +218,9 @@ class App extends React.Component<{},State> {
   if(!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(id))return;
   fetch('/api/listings/'+encodeURIComponent(id),{headers:{Accept:'application/json'}})
    .then(async response=>{if(!response.ok)throw Error(String(response.status));return response.json();})
-   .then((item:{images?:Array<{id:string;url:string}>})=>{
+   .then((item:ServerListing & {images?:Array<{id:string;url:string}>})=>{
      if(this.state.selectedListing!==id)return;
+     if(!this.state.listings.some(l=>l.id===id))this.setState(state=>({listings:[this.toListing(item),...state.listings]}));
      const images=Array.isArray(item.images)?item.images.filter(photo=>typeof photo.url==='string'&&photo.url.startsWith('/api/media/')).map(photo=>photo.url):[];
      if(images.length)this.setState({gallery:images,galleryIndex:0});
    }).catch(()=>{ /* Keep cover photo if gallery request fails. */ });

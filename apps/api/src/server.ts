@@ -1,3 +1,4 @@
+import { publishApproved } from './max-publish.js';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { connectConfiguredChannel } from './max-channel.js';
@@ -136,3 +137,9 @@ registerFavoritesRoutes(app,pool,auth);
 const port=Number(process.env.PORT||3001);
 try{await app.listen({port,host:'0.0.0.0'});}catch(err){app.log.error(err);process.exit(1)}
 if(process.env.MAX_CHANNEL_ID){void connectConfiguredChannel(pool).then(()=>app.log.info("MAX channel connected")).catch(()=>app.log.warn("MAX channel connection pending; retry from profile"));}
+
+const publish=()=>publishApproved(pool).catch(()=>app.log.warn("MAX publication interrupted; inspect delivery status"));
+void publish();
+const publishTimer=setInterval(()=>void publish(),30000);
+publishTimer.unref();
+app.addHook("onClose",async()=>{clearInterval(publishTimer);});

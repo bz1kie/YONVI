@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import pg from 'pg';
 
-const migrations = ['001_init.sql', '002_moderation_audit.sql', '003_max_sessions.sql', '004_listing_photos.sql', '005_max_channel_links.sql'];
+const migrations = ['001_init.sql', '002_moderation_audit.sql', '003_max_sessions.sql', '004_listing_photos.sql', '005_max_channel_links.sql', '006_max_channel_posts.sql'];
 if (!process.env.DATABASE_URL && !process.env.PGHOST) throw new Error('DATABASE_URL or PGHOST must be configured');
 
 const client = new pg.Client(process.env.DATABASE_URL ? { connectionString: process.env.DATABASE_URL } : {});

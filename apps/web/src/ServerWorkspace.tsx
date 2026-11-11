@@ -4,7 +4,7 @@ import './server-workspace.css';
 
 const DEV_USER = '11111111-1111-4111-8111-111111111111';
 const USER_STORAGE = 'yorvi-local-test-user';
-type Placement = { communityId: string; status: string };
+type Placement = { communityId: string; status: string; channelStatus?:string; channelError?:string };
 type MyListing = { id: string; title: string; description: string; price_kopecks: string|number; status: string; city: string; category: string; photo_url?: string|null; placements: Placement[] };
 type Community = { id:string; name:string; city?:string; max_channel_url?:string; max_channel_title?:string };
 type QueueItem = { placement_id:string; listing_id:string; title:string; description:string; price_kopecks:string|number; city:string };
@@ -264,6 +264,7 @@ export default function ServerWorkspace({createRequest=0}:{createRequest?:number
     {mine.length?<div className="sw-list">{mine.map(l=><article className="sw-listing" key={l.id}>
       <div className="sw-item-top">{l.photo_url?<img src={l.photo_url} alt={"Фотография "+l.title} className="sw-cover" loading="lazy"/>:null}<div><h3>{l.title}</h3><p>{l.city} · {rub(l.price_kopecks)}</p></div><span className={'sw-status '+l.status}>{l.status==='active'&&!l.placements.some(p=>p.status==='approved')?'На проверке':statusText[l.status]||l.status}</span></div>
       {l.placements.some(p=>p.status==='pending')?<p>Ожидает одобрения владельцем круга. После проверки появится в каталоге.</p>:null}
+      {l.placements.map(p=>p.channelStatus?<p key={'max-'+p.communityId} role="status">{p.channelStatus==='sent'?'✓ Опубликовано в канале MAX':p.channelStatus==='pending'?'Ожидает отправки в MAX':p.channelStatus==='sending'||p.channelStatus==='unknown'?'Проверьте канал: результат отправки уточняется':p.channelStatus==='failed'?'Не отправлено в MAX: '+p.channelError:'Публикация отменена'}</p>:null)}
       <div className="sw-placement">{(l.placements||[]).map(p=><span key={p.communityId}>{communities.find(c=>c.id===p.communityId)?.name||'Круг'} · {statusText[p.status]||p.status}</span>)}</div>
       <div className="sw-actions">
        {(l.status==='draft'||l.status==='active')&&<button className="sw-btn sw-secondary" disabled={busy} onClick={()=>edit(l)}>Редактировать</button>}

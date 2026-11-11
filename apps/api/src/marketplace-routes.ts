@@ -25,9 +25,9 @@ export function registerMarketplaceRoutes(app: FastifyInstance, pool: Pool, auth
     const { rows } = await pool.query(
       `SELECT l.id,l.title,l.description,l.price_kopecks,l.city,l.category,l.status,l.created_at,
         (SELECT '/api/media/' || m.id::text FROM listing_media m WHERE m.listing_id=l.id AND m.upload_status='ready' ORDER BY m.sort_order,m.created_at LIMIT 1) AS photo_url,
-        COALESCE(json_agg(json_build_object('communityId',p.community_id,'status',p.status))
+        COALESCE(json_agg(json_build_object('communityId',p.community_id,'status',p.status,'channelStatus',mp.status,'channelError',mp.last_error))
         FILTER(WHERE p.id IS NOT NULL),'[]'::json) AS placements
-        FROM listings l LEFT JOIN placements p ON p.listing_id=l.id
+        FROM listings l LEFT JOIN placements p ON p.listing_id=l.id LEFT JOIN max_channel_posts mp ON mp.placement_id=p.id
         WHERE l.seller_id=$1 GROUP BY l.id ORDER BY l.created_at DESC LIMIT 100`,
       [userId],
     );

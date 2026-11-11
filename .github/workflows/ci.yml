@@ -30,6 +30,7 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: node --test scripts/max-channel-test.mjs
+      - run: node --test scripts/max-publish-test.mjs
       - run: node --test scripts/max-auth-test.mjs
       - run: node --test scripts/photo-policy-test.mjs
       - name: Verify production migrations are repeatable
