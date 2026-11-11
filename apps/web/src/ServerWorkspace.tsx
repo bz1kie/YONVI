@@ -6,7 +6,7 @@ const DEV_USER = '11111111-1111-4111-8111-111111111111';
 const USER_STORAGE = 'yorvi-local-test-user';
 type Placement = { communityId: string; status: string };
 type MyListing = { id: string; title: string; description: string; price_kopecks: string|number; status: string; city: string; category: string; photo_url?: string|null; placements: Placement[] };
-type Community = { id:string; name:string; city?:string };
+type Community = { id:string; name:string; city?:string; max_channel_url?:string; max_channel_title?:string };
 type QueueItem = { placement_id:string; listing_id:string; title:string; description:string; price_kopecks:string|number; city:string };
 type Draft = { title:string; description:string; price:string; city:string; category:string };
 const startDraft: Draft = {title:'',description:'',price:'',city:'Воронеж',category:'electronics'};
@@ -207,6 +207,11 @@ export default function ServerWorkspace({createRequest=0}:{createRequest?:number
    <button className="sw-btn sw-secondary" type="button" disabled={!uuidOrEmpty(user)||busy} onClick={()=>{try{localStorage.setItem(USER_STORAGE,user);}catch{}void fetchData();}}>Применить</button>
   </div>:null}
   {alert&&<div role="status" className={'sw-alert sw-'+alert.kind}>{alert.text}</div>}
+  <details className="sw-panel"><summary>Канал MAX {communities.some(c=>c.max_channel_url)?'· подключён':''}</summary>
+   {communities.filter(c=>c.max_channel_url).map(c=><p key={c.id}><a href={c.max_channel_url} target="_blank" rel="noreferrer">{c.max_channel_title||c.name} ↗</a></p>)}
+   <p>Лаврик должен быть администратором канала. Подключение доступно владельцу канала.</p>
+   <button type="button" className="sw-btn sw-secondary" disabled={busy} onClick={()=>void action(async()=>{await api('/api/me/channel/connect',user,{method:'POST'},Boolean(sessionUser));},'Канал MAX подключён к кругу. Автопубликация постов пока выключена.')}>Проверить и подключить</button>
+  </details>
   <nav className="sw-tabs" aria-label="Раздел серверной мастерской">
    <button className={tab==='listings'?'active':''} onClick={()=>setTab('listings')}>Мои объявления ({mine.length})</button>
    <button className={tab==='moderation'?'active':''} onClick={()=>setTab('moderation')}>Проверка</button>

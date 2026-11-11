@@ -152,7 +152,7 @@ services = api('GET', '/services?' + urllib.parse.urlencode({'name': name, 'owne
 matches = [item['service'] for item in services if item['service']['name'] == name and item['service']['ownerId'] == owner]
 if len(matches) > 1:
     fail('Multiple matching YONVI services found; refusing to choose one.')
-values = {'DATABASE_URL': database, 'NODE_ENV': 'production', 'ALLOW_DEMO_AUTH': 'false', 'PORT': '10000'}
+values = {'MAX_CHANNEL_ID': '81082274981279', 'MAX_CHANNEL_URL': 'https://max.ru/se14029050_biz', 'DATABASE_URL': database, 'NODE_ENV': 'production', 'ALLOW_DEMO_AUTH': 'false', 'PORT': '10000'}
 token = os.environ.get('MAX_YONVI_TOKEN', '').strip()
 if token:
     values['MAX_YONVI_TOKEN'] = token

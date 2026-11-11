@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import { connectConfiguredChannel } from './max-channel.js';
 import pg from 'pg';
 import { z } from 'zod';
 import { canModerate } from './domain.mjs';
@@ -73,7 +74,7 @@ app.post('/api/listings/:id/sold',async(req,reply)=>{
   const exists=await pool.query('SELECT id FROM listings WHERE id=$1 AND seller_id=$2',[id,userId]);
   return exists.rows.length?reply.code(409).send({error:'Invalid state transition'}):reply.code(404).send({error:'Not found'});
 });
-app.get('/api/communities',async()=>({items:(await pool.query("SELECT id,name,city,visibility FROM communities WHERE visibility='public' ORDER BY name")).rows}));
+app.get('/api/communities',async()=>({items:(await pool.query("SELECT c.id,c.name,c.city,c.visibility,m.channel_url AS max_channel_url,m.title AS max_channel_title FROM communities c LEFT JOIN max_channel_links m ON m.community_id=c.id WHERE c.visibility='public' ORDER BY c.name")).rows}));
 // Each authenticated seller may create and moderate their own public circle.
 app.post('/api/communities',async(req,reply)=>{
   const userId=auth(req);if(!userId)return reply.code(401).send({error:'Unauthorized'});
@@ -123,9 +124,15 @@ app.post('/api/placements/:id/moderate',async(req,reply)=>{
   } catch(e){await client.query('ROLLBACK');throw e;} finally {client.release();}
 });
 
+app.post('/api/me/channel/connect',async(req,reply)=>{
+ const userId=auth(req);if(!userId)return reply.code(401).send({error:'Unauthorized'});
+ try{return await connectConfiguredChannel(pool,userId);}
+ catch(error){return reply.code(409).send({error:error instanceof Error?error.message:'Не удалось подключить канал'});}
+});
 registerMarketplaceRoutes(app,pool,auth);
 registerPhotoRoutes(app,pool,auth);
 registerFavoritesRoutes(app,pool,auth);
 
 const port=Number(process.env.PORT||3001);
 try{await app.listen({port,host:'0.0.0.0'});}catch(err){app.log.error(err);process.exit(1)}
+if(process.env.MAX_CHANNEL_ID){void connectConfiguredChannel(pool).then(()=>app.log.info("MAX channel connected")).catch(()=>app.log.warn("MAX channel connection pending; retry from profile"));}
