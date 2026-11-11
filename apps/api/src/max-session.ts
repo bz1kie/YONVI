@@ -17,7 +17,8 @@ const cookieValue=(req:FastifyRequest):string|null=>{
  return /^[a-f0-9]{64}$/i.test(value) ? value : null;
 };
 const isProd=()=>process.env.NODE_ENV==='production';
-const cookieOptions=()=>`Path=/api; HttpOnly; SameSite=Strict; ${isProd()?'Secure; ':''}Max-Age=${SESSION_SECONDS}`;
+// MAX Web embeds the app cross-site. Partition the HTTPS session by its host site.
+const cookieOptions=(maxAge=SESSION_SECONDS)=>`Path=/api; HttpOnly; ${isProd()?'SameSite=None; Secure; Partitioned; ':'SameSite=Strict; '}Max-Age=${maxAge}`;
 const allowedOrigin=()=>process.env.WEB_ORIGIN||'http://localhost:5173';
 function originMatches(req:FastifyRequest):boolean {
  const origin=req.headers.origin;
@@ -97,7 +98,7 @@ export function registerMaxAuthentication(app:FastifyInstance,pool:Pool){
    const denied=requireOrigin(req,reply);if(denied)return denied;
    const raw=cookieValue(req);
    if(raw)await pool.query('DELETE FROM user_sessions WHERE token_hash=$1',[rawToHash(raw)]);
-   reply.header('Set-Cookie',`${COOKIE}=; Path=/api; HttpOnly; SameSite=Strict; ${isProd()?'Secure; ':''}Max-Age=0`);
+   reply.header('Set-Cookie',`${COOKIE}=; ${cookieOptions(0)}`);
    reply.header('Cache-Control','no-store');
    return {ok:true};
  });

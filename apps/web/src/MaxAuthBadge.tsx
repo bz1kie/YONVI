@@ -28,10 +28,12 @@ export default function MaxAuthBadge(){
    const bridge=(window as WindowWithMax).WebApp;
    const initData=bridge?.initData;
    if(!initData){setStatus('outside-max');return;}
-   const loggedIn=await json<{user:SessionUser}>(await fetch('/api/auth/max',{
+   await json<{user:SessionUser}>(await fetch('/api/auth/max',{
     method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData}),
    }));
-   setUser(loggedIn.user);setStatus('signed-in');window.dispatchEvent(new Event('yorvi:auth-change'));bridge?.ready?.();
+   // A successful signature check does not prove the browser retained its cookie.
+   const confirmed=await json<{user:SessionUser}>(await fetch('/api/auth/me',{credentials:'same-origin',cache:'no-store'}));
+   setUser(confirmed.user);setStatus('signed-in');window.dispatchEvent(new Event('yorvi:auth-change'));bridge?.ready?.();
   }catch(e){
    setStatus('error');setError(e instanceof Error?e.message:'Не удалось войти');
   }
