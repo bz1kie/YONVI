@@ -167,7 +167,7 @@ function LavoseBannerCarousel({onCreate,onCatalog,onNearby,onCircles}:{onCreate:
    <p>{item.description}</p>
    <button type="button" className="lavose-banners-action" onClick={action}>{item.cta}<span aria-hidden="true"> →</span></button>
   </div>
-  <div className="lavose-banners-art" aria-hidden="true"><div className="lavose-banners-glow"/><img src="/assets/yori-raccoon-large.webp" alt=""/><span className="lavose-banners-prop">{item.emoji}</span></div>
+  <div className="lavose-banners-art" aria-hidden="true"><div className="lavose-banners-glow"/><img key={active} src={`/assets/lavose-banner-${active+1}.webp`} onError={e=>{e.currentTarget.onerror=null;e.currentTarget.src="/assets/yori-raccoon-large.webp";}} alt=""/></div>
   <div className="lavose-banners-controls"><button type="button" onClick={()=>move(-1)} aria-label="Предыдущий баннер">‹</button><div className="lavose-banners-dots">{LAVOSE_BANNERS.map((b,i)=><button key={b.theme} type="button" aria-label={'Баннер '+(i+1)+': '+b.title} aria-current={active===i?'true':undefined} className={active===i?'active':''} onClick={()=>setActive(i)}/>)}</div><button type="button" onClick={()=>move(1)} aria-label="Следующий баннер">›</button></div>
  </section>;
 }
