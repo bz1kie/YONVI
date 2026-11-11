@@ -222,3 +222,86 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
  .header-post{padding:12px}
  .desktop-market-hero img{right:1%;opacity:.85}
 }
+
+
+/* LAVOSE Desktop V3 — reference composition, desktop only */
+@media(min-width:1025px){
+ :root,:root[data-theme="dark"]{color-scheme:dark;--bg:#090d10;--surface:#1a2025;--surface-alt:#22292f;--surface-soft:#151b20;--text:#f6f8f7;--muted:#aeb6bb;--muted2:#7f898e;--border:#30383d;--nav:#090d10;--lime:#c8ff28;--lime-hover:#b8f51e;--shadow:none}
+ body{background:#090d10;color:#f6f8f7}
+ .app-shell{background:#090d10}
+ .sidebar{position:sticky;top:0;left:auto;bottom:auto;z-index:32;width:100%;height:72px;display:flex;flex-direction:row;align-items:center;gap:24px;padding:0 clamp(20px,2.2vw,45px);border:0;border-bottom:1px solid #2a3135;background:#090d10}
+ .brand-btn{margin:0 18px 0 0;display:flex;align-items:center;gap:9px;flex-shrink:0}
+ .lavose-brand-mark{font-size:35px;line-height:1;font-weight:1000;color:#c8ff28;transform:rotate(-9deg);text-shadow:0 0 13px #bfff2730}
+ .lavose-brand-type{display:flex;flex-direction:column;text-align:left;line-height:1}
+ .lavose-brand-type b{font-size:26px;letter-spacing:-.06em;color:white}
+ .lavose-brand-type small{font-size:10px;letter-spacing:.44em;color:#fff;margin-top:5px}
+ .sidebar .side-nav{display:flex;flex-direction:row;align-items:center;gap:7px;flex:1;min-width:0}
+ .sidebar .nav-item{min-height:42px;display:flex;gap:8px;padding:10px 14px;white-space:nowrap;color:#f4f6f6;font-weight:800;font-size:13px;border-radius:24px}
+ .sidebar .nav-item.active{background:#c8ff28;color:#0c1011}
+ .sidebar .nav-item:hover{background:#232a2d;color:#c8ff28}
+ .sidebar .nav-item.active:hover{background:#c8ff28;color:#0c1011}
+ .sidebar-bottom{margin:0 0 0 auto;display:flex;align-items:center;gap:13px;flex-shrink:0}
+ .sidebar-bottom .header-location{display:flex;align-items:center;gap:6px;color:#e8f2ec;white-space:nowrap}
+ .sidebar-bottom .header-location>svg{color:#c8ff28}
+ .sidebar-bottom .header-location select{max-width:135px;color:#fff;background:transparent;border:0;font-weight:800}
+ .sidebar-bottom .header-location option{background:#161d21;color:white}
+ .sidebar-bottom .header-location button{background:transparent;border:0;color:#c8ff28;padding:4px}
+ .lavose-signin{display:flex;align-items:center;gap:8px;background:#1b2126;border:1px solid #2c3337;color:white;border-radius:25px;padding:11px 17px;font-weight:800;white-space:nowrap}
+ .sidebar .desktop-post{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 19px;white-space:nowrap;background:#c8ff28;color:#090d10;border:0;border-radius:25px;font-size:13px;font-weight:900}
+ .main-shell{margin:0!important;width:100%;max-width:none}
+ .topbar{display:none!important}
+ .page-content{max-width:1920px!important;width:100%;padding:20px clamp(20px,2.2vw,45px) 70px!important}
+ .api-status[hidden]{display:none!important}
+ .catalog-location.legacy-location{display:none!important}
+ .lavose-feature-row{display:grid;grid-template-columns:minmax(0,4fr) minmax(245px,1fr);gap:18px;margin-bottom:22px}
+ .lavose-feature-main{min-height:334px;position:relative;isolation:isolate;display:flex;align-items:center;overflow:hidden;border-radius:30px;border:2px solid #3b4346;background:radial-gradient(ellipse at 40% 120%,#2e4814 0%,#131a1b 48%,#0e1318 90%);padding:30px 4%}
+ .lavose-feature-copy{position:relative;z-index:3;max-width:42%}
+ .lavose-feature-copy h1{font-size:clamp(29px,3vw,51px);line-height:1.06;letter-spacing:-.055em;margin:0 0 17px;font-weight:900;color:#fff}
+ .lavose-feature-copy h1 em,.lavose-max-promo h2 em{color:#c8ff28;font-style:normal}
+ .lavose-feature-copy p{color:#e4e9e5;font-size:clamp(13px,1.13vw,19px);line-height:1.4;margin:0 0 20px}
+ .lavose-feature-cta{display:flex;align-items:center;gap:10px;background:#c8ff28;color:#090d10;border:0;border-radius:24px;padding:13px 21px;font-size:15px;font-weight:900;white-space:nowrap}
+ .lavose-feature-mascot{position:absolute;z-index:1;left:34%;bottom:-27%;height:128%;width:39%;object-fit:contain;object-position:center bottom;pointer-events:none}
+ .lavose-feature-benefits{position:absolute;right:2.5%;top:9%;bottom:12%;width:27%;z-index:2;display:flex;flex-direction:column;justify-content:center;gap:7px}
+ .lavose-feature-benefits>div{flex:1;min-height:0;display:flex;align-items:center;gap:12px;border:1px solid #343c40;border-radius:18px;background:#1a2025e8;padding:12px}
+ .lavose-feature-benefits svg{color:#c8ff28;flex-shrink:0}
+ .lavose-feature-benefits span{display:flex;flex-direction:column;min-width:0}
+ .lavose-feature-benefits b{font-size:clamp(15px,1.35vw,22px);line-height:1.1}
+ .lavose-feature-benefits small{font-size:clamp(10px,.85vw,13px);color:#d9e0e0;margin-top:4px}
+ .lavose-max-promo{position:relative;overflow:hidden;border:2px solid #343b40;border-radius:30px;background:radial-gradient(circle at 100% 120%,#7aab16,#161d22 54%,#10161b);padding:26px 24px;min-height:334px}
+ .lavose-max-promo h2{font-size:clamp(21px,1.7vw,29px);line-height:1.22;color:white;margin:0 0 16px}
+ .lavose-max-promo p{font-size:14px;line-height:1.5;color:#c9d1d1}
+ .lavose-max-promo a{position:absolute;bottom:22px;left:22px;right:22px;display:flex;align-items:center;justify-content:center;gap:9px;padding:13px 9px;border-radius:15px;background:#c8ff28;color:#111714;font-weight:900}
+ .lavose-max-symbol{background:#101416;color:#c8ff28;border-radius:7px;padding:6px}
+ .catalog-screen .catalog-categories{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto;scroll-snap-type:x proximity;gap:8px;margin-bottom:24px;padding:2px 0 8px;scrollbar-width:thin}
+ .catalog-screen .catalog-categories button{flex:0 0 clamp(114px,9.4vw,158px);min-height:110px;scroll-snap-align:start;border:1px solid #343c41;border-radius:19px;background:linear-gradient(150deg,#20272d,#171d22);color:#f7f7f7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:8px}
+ .catalog-screen .catalog-categories button.selected{border:2px solid #c8ff28;background:linear-gradient(145deg,#1e3020,#111b1a)}
+ .catalog-screen .catalog-categories button b{font-size:12px;line-height:1.25;text-align:center}
+ .catalog-screen .catalog-categories .category-art{width:65px;height:60px;background-size:contain;background-position:center;background-repeat:no-repeat}
+ .catalog-screen .results-header{margin:14px 0 19px}
+ .catalog-screen .results-header h1{font-size:26px;font-weight:900;color:#f8f8f8}
+ .catalog-screen .results-header select{background:#20262a;color:white;border:1px solid #343b40;border-radius:18px;padding:10px}
+ .catalog-screen .product-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:14px}
+ .product-card{background:#1c2227;border:1px solid #353c42;border-radius:19px;box-shadow:none}
+ .product-art{height:auto;aspect-ratio:1.32}
+ .product-card:hover{box-shadow:0 8px 30px #0008}
+ .app-footer{background:#0b1013;color:#aab2b5;border-top:1px solid #293036}
+}
+@media(min-width:1025px) and (max-width:1450px){
+ .sidebar{gap:10px;padding-inline:18px}
+ .brand-btn{margin-right:5px}
+ .sidebar .nav-item{padding:9px 10px;font-size:12px}
+ .sidebar-bottom{gap:7px}
+ .sidebar .desktop-post{padding:0 12px}
+ .lavose-feature-benefits{width:29%;right:2%}
+ .lavose-feature-copy{max-width:45%}
+ .catalog-screen .product-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+}
+@media(min-width:1025px) and (max-width:1180px){
+ .sidebar .nav-item:nth-child(4){display:none}
+ .sidebar-bottom .header-location button{display:none}
+ .lavose-feature-row{grid-template-columns:minmax(0,3fr) minmax(220px,1fr)}
+ .lavose-feature-copy h1{font-size:29px}
+ .lavose-feature-benefits small{display:none}
+ .lavose-feature-benefits b{font-size:15px}
+ .catalog-screen .product-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
