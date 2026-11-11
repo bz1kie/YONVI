@@ -1,3 +1,4 @@
+import './lavose-banners.css';
 import ListingDetails from './ListingDetails';
 import Conversations from './Conversations';
 import React from 'react';
