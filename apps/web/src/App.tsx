@@ -148,6 +148,10 @@ const initState = ():State => {
  };
 };
 
+const CATEGORY_ART:Record<string,string> = {
+ all:'▦',electronics:'🎧',gaming:'🎮',fashion:'🧥',home:'🛋️',transport:'🚙',hobby:'🎸',auto:'🚘'
+};
+function CategoryArt({id}:{id:string}){return <span className={'lavose-category-art lavose-category-art-'+id} aria-hidden="true"><span className="lavose-category-art-glow"/><span className="lavose-category-art-object">{CATEGORY_ART[id]||'📦'}</span></span>;}
 const LAVOSE_BANNERS = [
  {title:'Находи своё.',accent:'Рядом.',description:'Техника, одежда, вещи для дома и другие находки — в одном месте.',cta:'Смотреть объявления',theme:'find',tag:'МАРКЕТПЛЕЙС НАХОДОК',emoji:'🛒'},
  {title:'Вещи без дела?',accent:'Пора продавать!',description:'Освободи место для нового. Размести объявление и найди покупателя.',cta:'Разместить объявление',theme:'sell',tag:'ПРОДАВАЙ ПРОЩЕ',emoji:'📦'},
@@ -355,7 +359,7 @@ class App extends React.Component<{},State> {
  renderCatalog(){const baseItems=this.filterItems(this.state.listings);const tab=this.state.catalogTab;const currentCity=this.state.filters.city;const subscribed=this.state.circles.filter(c=>c.isJoined).map(c=>c.id);const items=baseItems.filter(l=>tab==='all'||(tab==='nearby'?(currentCity!=='all'&&l.city===currentCity):tab==='circles'?Object.entries(l.placements||{}).some(([id,status])=>id!=='global'&&status==='approved'):Object.entries(l.placements||{}).some(([id,status])=>subscribed.includes(id)&&status==='approved')));return <div className="catalog-screen">
   {!this.state.query&&this.state.filters.category==='all'?<LavoseBannerCarousel onCreate={()=>this.openCreate()} onCatalog={()=>this.go('catalog')} onNearby={()=>{this.setState({catalogTab:'nearby'});this.go('catalog');}} onCircles={()=>this.go('circles')}/>:null}
   <div className="catalog-location legacy-location"><Icon name="map" size={16}/><select aria-label="Город поиска" value={this.state.filters.city} onChange={e=>this.setFilter({city:e.target.value})}><option value="all">Все города</option>{Array.from(new Set(['Воронеж','Москва','Липецк',...this.state.listings.map(l=>l.city)])).map(city=><option key={city}>{city}</option>)}</select></div>
-  <div id="lavose-categories" className="catalog-categories" aria-label="Категории">{CAT.map(c=><button type="button" key={c.id} aria-pressed={this.state.filters.category===c.id} className={this.state.filters.category===c.id?'selected':''} onClick={()=>this.setFilter({category:c.id})}><span className="lavose-category-emoji" aria-hidden="true">{c.emoji}</span><b>{c.name}</b></button>)}</div>
+  <div id="lavose-categories" className="catalog-categories" aria-label="Категории">{CAT.map(c=><button type="button" key={c.id} aria-pressed={this.state.filters.category===c.id} className={this.state.filters.category===c.id?'selected':''} onClick={()=>this.setFilter({category:c.id})}><CategoryArt id={c.id}/><b>{c.name}</b></button>)}</div>
   <div className={'catalog-filters '+(this.state.filterOpen?'expanded':'')}>{this.renderFilterbar()}
    {this.state.filterOpen&&this.state.serverCircles.length?<div className="yorvi-server-circles"><label htmlFor="yorvi-server-circle">Сообщество</label><select id="yorvi-server-circle" value={this.state.selectedCommunityId||''} onChange={e=>this.selectServerCircle(e.target.value||null)}><option value="">Все сообщества</option>{this.state.serverCircles.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select></div>:null}
   </div>
