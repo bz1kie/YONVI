@@ -317,7 +317,7 @@ class App extends React.Component<{},State> {
   if(f.deal!=='all'&&l.deal!==f.deal)return false;
   if(f.minPrice&&l.price<Number(f.minPrice))return false;
   if(f.maxPrice&&l.price>Number(f.maxPrice))return false;
-  if(query&&!(l.title+' '+l.description+' '+l.city).toLowerCase().includes(query.toLowerCase()))return false;
+  if(query){const normalize=(value:string)=>value.toLocaleLowerCase('ru-RU').replace(/ё/g,'е').replace(/[^\\p{L}\\p{N}]+/gu,' ').trim();const haystack=normalize(l.title+' '+l.description+' '+l.city);if(!normalize(query).split(/\\s+/).every(word=>haystack.includes(word)))return false;}
   return true;
  }).sort((a,b)=>f.sort==='cheap'?a.price-b.price:f.sort==='expensive'?b.price-a.price:f.sort==='popular'?b.views-a.views:b.createdAt-a.createdAt);}
  shareItem(id:string){const url=location.origin+location.pathname+'?listing='+encodeURIComponent(id);this.copy(url);}
@@ -329,7 +329,7 @@ class App extends React.Component<{},State> {
  }
  setFilter(patch:Partial<Filters>){this.setState(s=>({filters:{...s.filters,...patch},page:s.page==='home'?'catalog':s.page}));}
  renderCard(l:Listing){const liked=this.state.favorites.includes(l.id);return <article key={l.id} className="product-card" onClick={()=>this.openListing(l.id)} tabIndex={0} role="button" onKeyDown={(e:any)=>{if(e.key==='Enter'&&e.target===e.currentTarget)this.openListing(l.id);}} aria-label={'Открыть '+l.title}>
-   <div className={'product-art '+l.art}>{demoPhoto(l)?<img src={demoPhoto(l)} alt={'Иллюстрация: '+l.title} loading="lazy"/>:<span className="product-emoji" aria-hidden="true">{l.emoji}</span>}
+   <div className={'product-art '+l.art}>{demoPhoto(l)?<img src={demoPhoto(l)} alt={l.title} loading="lazy" decoding="async"/>:<span className="product-emoji" aria-hidden="true">{l.emoji}</span>}
     {l.deal==='swap'?<span className="art-label">Обмен</span>:l.deal==='free'?<span className="art-label">Бесплатно</span>:l.id==='l1'?<span className="art-label">Хит находок</span>:null}
     <button className={'heart-btn '+(liked?'liked':'')} onClick={(e:any)=>{e.stopPropagation();this.favorite(l.id);}} aria-label={liked?'Убрать из избранного':'В избранное'}><Icon name="heart" size={18} filled={liked}/></button>
    </div><div className="product-info"><button className="cart-toggle" aria-label={this.state.cart.includes(l.id)?'Убрать из корзины':'Добавить в корзину'} onClick={e=>{e.stopPropagation();if(!this.state.favoritesAuthenticated){this.setState({loginOpen:true});return;}this.setState(v=>({cart:v.cart.includes(l.id)?v.cart.filter(id=>id!==l.id):[...v.cart,l.id]}));}}><Icon name="cart" size={17}/>{this.state.cart.includes(l.id)?'В корзине':'В корзину'}</button><div className="product-price">{l.deal==='free'?'Бесплатно':money(l.price)}</div><h3>{l.title}</h3><div className="product-meta"><span><Icon name="map" size={13}/>{l.city}</span><span>{relativeDate(l.createdAt)}</span></div></div>
