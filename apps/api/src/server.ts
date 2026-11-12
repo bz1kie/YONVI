@@ -22,45 +22,6 @@ const pool=new pg.Pool(connectionString ? {connectionString} : {});
 await app.register(cors,{origin:process.env.WEB_ORIGIN || 'http://localhost:5173'});
 
 
-app.post('/api/ai/recognize-product',{bodyLimit:6*1024*1024},async(req,reply)=>{
- const userId=auth(req);if(!userId)return reply.code(401).send({error:'Требуется авторизация'});
- const parsed=z.object({image:z.string().max(5_600_000),mimeType:z.enum(['image/jpeg','image/png','image/webp'])}).safeParse(req.body);
- if(!parsed.success||!/^[A-Za-z0-9+/]+={0,2}$/.test(parsed.data.image))return reply.code(400).send({error:'Некорректная фотография'});
-
- const key=process.env.ZAI_API_KEY;
- if(!key)return reply.code(503).send({error:'Ключ GLM Vision не настроен'});
- try{
-  const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),30000);
-  let response:Response;
-  try{
-   response=await fetch('https://api.z.ai/api/paas/v4/chat/completions',{
-    method:'POST',signal:controller.signal,
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-    body:JSON.stringify({
-     model:'glm-4.5v',
-     messages:[{role:'user',content:[
-      {type:'text',text:'Распознай товар для объявления. Найди на фотографии тип товара, видимый бренд, маркировку и точную модель. Не выдумывай бренд или модель, если надписи неразборчивы. Ответь ТОЛЬКО JSON без markdown: {"title":"конкретное название на русском до 100 символов","category":"electronics"}. category строго одно из electronics, gaming, fashion, home, transport, hobby, auto. Если предмет не определить, title пустая строка.'},
-      {type:'image_url',image_url:{url:'data:'+parsed.data.mimeType+';base64,'+parsed.data.image}}
-     ]}],
-     temperature:0.1,max_tokens:350,stream:false
-    })
-   });
-  }finally{clearTimeout(timeout);}
-  if(!response.ok){
-   const detail=await response.text().catch(()=>'');
-   req.log.warn({status:response.status,detail:detail.slice(0,500)},'GLM Vision request rejected');
-   return reply.code(502).send({error:'GLM Vision: ошибка провайдера ('+response.status+')'});
-  }
-  const data=await response.json() as {choices?:Array<{message?:{content?:string|Array<{text?:string}>}}>};
-  const content=data.choices?.[0]?.message?.content;
-  const raw=typeof content==='string'?content:Array.isArray(content)?content.map(x=>x.text||'').join(''):'';
-  const jsonText=raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
-  const parsedResult=z.object({title:z.string().max(120),category:z.enum(['electronics','gaming','fashion','home','transport','hobby','auto'])}).safeParse(JSON.parse(jsonText));
-  if(!parsedResult.success)return reply.code(502).send({error:'GLM вернул некорректный результат'});
-  return {title:parsedResult.data.title.trim(),category:parsedResult.data.category};
- }catch(e){req.log.warn({message:e instanceof Error?e.message:'Unknown'},'GLM Vision request failed');return reply.code(502).send({error:'Не удалось распознать фотографию через GLM'});}
-});
-
 app.get('/health',async()=>({ok:true,service:'yorvi-api',version:'2.0.0-alpha.1'}));
 registerMaxAuthentication(app,pool);
 const auth=currentUserId;
