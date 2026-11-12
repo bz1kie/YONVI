@@ -244,3 +244,6 @@ html,body,button,input,select,textarea{font-family:var(--lavos-font)}
 .max-auth-bridge .max-auth-badge{font-size:11px;padding:7px 10px;border-radius:12px;background:#18231d;color:#d8f4de;border:1px solid #3a5744}
 .max-auth-bridge .max-auth-badge.login-trigger{display:none}
 @media(max-width:700px){.max-auth-bridge{right:10px;bottom:calc(70px + env(safe-area-inset-bottom))}.max-auth-bridge .max-auth-badge{font-size:10px}}
+
+/* Hide promotional banners on phones; keep desktop carousel intact. */
+@media (max-width:700px){.catalog-screen .lavose-banners,.catalog-screen .lavose-banners-shell,.lavose-banners{display:none!important}}
