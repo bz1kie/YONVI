@@ -2,6 +2,7 @@ import React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import './server-workspace.css';
 import {recognizeProduct} from './lib/recognizeProduct';
+import {recognizeVisual} from './lib/recognizeVisual';
 
 const DEV_USER = '11111111-1111-4111-8111-111111111111';
 const USER_STORAGE = 'yorvi-local-test-user';
