@@ -163,3 +163,13 @@ html,body,button,input,select,textarea{font-family:var(--lavos-font)}
  .catalog-screen .lavose-banners-art img{-webkit-mask-image:none!important;mask-image:none!important}
  .catalog-screen .lavose-banners:after{background:linear-gradient(90deg,#081310 0%,rgba(8,19,16,.97) 27%,rgba(8,19,16,.78) 40%,rgba(8,19,16,.22) 60%,transparent 78%)!important;pointer-events:none}
 }
+
+/* Seamless hero v3: fade pixels of the actual image (not its wrapper).
+   This avoids a visible rectangle when browser compositing ignores wrapper masking. */
+@media(min-width:701px){
+ .catalog-screen .lavose-banners-art{width:100%!important;left:0!important;right:0!important;-webkit-mask-image:none!important;mask-image:none!important;background:transparent!important}
+ .catalog-screen .lavose-banners-art img{width:100%!important;height:100%!important;object-fit:contain!important;object-position:right center!important;
+   -webkit-mask-image:linear-gradient(90deg,transparent 0%,transparent 24%,rgba(0,0,0,.08) 37%,rgba(0,0,0,.42) 52%,#000 74%)!important;
+   mask-image:linear-gradient(90deg,transparent 0%,transparent 24%,rgba(0,0,0,.08) 37%,rgba(0,0,0,.42) 52%,#000 74%)!important}
+ .catalog-screen .lavose-banners:after{background:linear-gradient(90deg,#081310 0%,rgba(8,19,16,.98) 28%,rgba(8,19,16,.70) 43%,transparent 74%)!important}
+}
