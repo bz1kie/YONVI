@@ -1,6 +1,7 @@
 import React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import './server-workspace.css';
+import {recognizeProduct} from './lib/recognizeProduct';
 
 const DEV_USER = '11111111-1111-4111-8111-111111111111';
 const USER_STORAGE = 'yorvi-local-test-user';
@@ -92,6 +93,9 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
  const [draft,setDraft]=useState<Draft>(startDraft);
  const [photoFiles,setPhotoFiles]=useState<File[]>([]);
  const completedPhotos=useRef(0);
+ const recognitionSeq=useRef(0);
+ const [recognitionStatus,setRecognitionStatus]=useState('');
+ const [recognitionBusy,setRecognitionBusy]=useState(false);
  const [uploadProgress,setUploadProgress]=useState('');
  const [pendingDraftId,setPendingDraftId]=useState<string|null>(null);
  const [photoListing,setPhotoListing]=useState<string>('');
@@ -275,8 +279,21 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
             notify('error','Выберите до 10 JPEG, PNG или WebP (до 5 МБ каждый).');e.target.value='';return;
           }
           completedPhotos.current=0;setPhotoFiles(files);
+          const seq=++recognitionSeq.current;
+          if(!files.length){setRecognitionStatus('');setRecognitionBusy(false);return;}
+          setRecognitionBusy(true);setRecognitionStatus('Распознаём товар по фото…');
+          void recognizeProduct(files[0]).then(result=>{
+            if(seq!==recognitionSeq.current)return;
+            const updates:Partial<Draft>={};
+            if(result.title)updates.title=result.title;
+            if(result.category&&!editId)updates.category=result.category;
+            if(result.barcode)updates.description='Штрихкод: '+result.barcode;
+            setDraft(prev=>({...prev,...updates}));
+            setRecognitionStatus(result.title||result.category?'Название и категория предложены автоматически — проверьте их перед публикацией.':'Не удалось уверенно определить товар. Укажите название вручную или сфотографируйте маркировку крупнее.');
+          }).catch(()=>{if(seq===recognitionSeq.current)setRecognitionStatus('Не удалось распознать фото. Название и категорию можно заполнить вручную.');}).finally(()=>{if(seq===recognitionSeq.current)setRecognitionBusy(false);});
         }}/>
       <PhotoPreviews files={photoFiles}/>
+      {recognitionStatus&&<small role="status" className="sw-recognition-status">{recognitionBusy?'⌛ ':''}{recognitionStatus}</small>}
       {photoFiles.length?<div className="sw-photo-chips">{photoFiles.map((file,i)=><span key={file.name+'-'+i}>{i+1}. {file.name}</span>)}</div>:null}
       <small>Текст черновика сохраняется на этом устройстве. После перезапуска фотографии нужно выбрать заново.</small>
     </div>
