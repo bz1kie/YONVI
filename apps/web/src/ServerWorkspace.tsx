@@ -301,6 +301,7 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
         }}/>
       <PhotoPreviews files={photoFiles}/>
       {recognitionStatus&&<small role="status" className="sw-recognition-status">{recognitionBusy?'⌛ ':''}{recognitionStatus}</small>}
+      {photoFiles.length>0&&<button type="button" className="btn btn-secondary" disabled={recognitionBusy} onClick={()=>document.getElementById('sw-create-photos')?.dispatchEvent(new Event('change',{bubbles:true}))}>Повторить поиск по первой фотографии</button>}
       {photoFiles.length?<div className="sw-photo-chips">{photoFiles.map((file,i)=><span key={file.name+'-'+i}>{i+1}. {file.name}</span>)}</div>:null}
       <small>Текст черновика сохраняется на этом устройстве. После перезапуска фотографии нужно выбрать заново.</small>
     </div>
