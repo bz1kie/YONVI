@@ -284,12 +284,12 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
           void (async()=>{
             const bitmap=await createImageBitmap(files[0]);
             try{
-              const scale=Math.min(1,1280/Math.max(bitmap.width,bitmap.height));
+              const scale=Math.min(1,1920/Math.max(bitmap.width,bitmap.height));
               const canvas=document.createElement('canvas');
               canvas.width=Math.max(1,Math.round(bitmap.width*scale));
               canvas.height=Math.max(1,Math.round(bitmap.height*scale));
               canvas.getContext('2d')?.drawImage(bitmap,0,0,canvas.width,canvas.height);
-              const image=canvas.toDataURL('image/jpeg',0.8).split(',')[1];
+              const image=canvas.toDataURL('image/jpeg',0.85).split(',')[1];
               const result=await api<{title:string;category:string}>('/api/ai/recognize-product',user,{method:'POST',body:JSON.stringify({image,mimeType:'image/jpeg'})},true);
               if(seq!==recognitionSeq.current)return;
               if(result.title){
