@@ -27,8 +27,15 @@ export async function recognizeProduct(file:File):Promise<PhotoGuess>{
  let title='';
  if(cell)title='Аккумулятор Li-ion '+cell[0].replace(/\s/g,'').toUpperCase();
  else{
-  const useful=lines.filter(x=>/[\p{L}]/u.test(x)&&!/^\s*(?:made in|warning|caution|серийный|штрихкод|barcode|ean|gtin)/i.test(x));
+  const useful=lines.filter(x=>{
+   if(!/[\p{L}]/u.test(x)||/^\s*(?:made in|warning|caution|серийный|штрихкод|barcode|ean|gtin)/i.test(x))return false;
+   if(/\b\d+(?:[.,]\d+)?\s*(?:v|в|volt|вольт|mah|мач|ah|а·ч|wh|w|ватт)\b/i.test(x))return false;
+   if(!/[\p{L}]{3,}/u.test(x))return false;
+   if(/^\d+[\s.,/-]*[a-z]{1,4}$/i.test(x))return false;
+   return true;
+  });
   title=(useful.find(x=>/[\p{L}]/u.test(x)&&/\d/.test(x))||useful.find(x=>x.length>=5)||'').slice(0,120);
  }
+
  return {title,category,barcode,text};
 }
