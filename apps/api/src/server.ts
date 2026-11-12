@@ -63,10 +63,7 @@ app.post('/api/ai/recognize-product',{bodyLimit:4*1024*1024},async(req,reply)=>{
   if(!file.id)throw new Error('GigaChat file id missing');
   const response=await fetch('https://gigachat.devices.sberbank.ru/api/v1/chat/completions',{
    method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
-   body:JSON.stringify({model:process.env.GIGACHAT_MODEL||'GigaChat-2',temperature:0.1,max_tokens:400,messages:[{role:'user',content:[
-    {type:'text',text:'Определи товар на фото для объявления. Верни только JSON: {"title":"название на русском","description":"краткое описание только достоверных видимых признаков","brand":"бренд или пусто","model":"модель только если точно читается, иначе пусто","category":"electronics|gaming|fashion|home|transport|hobby|auto"}. Не придумывай модель, состояние, повреждения, работоспособность и комплектацию.'},
-    {type:'image',image:{file_id:file.id}}
-   ]}]}),signal:AbortSignal.timeout(45000)
+   body:JSON.stringify({model:process.env.GIGACHAT_MODEL||'GigaChat-2',temperature:0.1,max_tokens:400,messages:[{role:'user',content:'Определи товар на фото для объявления. Верни только JSON: {"title":"название на русском","description":"краткое описание только достоверных видимых признаков","brand":"бренд или пусто","model":"модель только если точно читается, иначе пусто","category":"electronics|gaming|fashion|home|transport|hobby|auto"}. Не придумывай модель, состояние, повреждения, работоспособность и комплектацию.',attachments:[file.id]}]}),signal:AbortSignal.timeout(45000)
   });
   if(!response.ok)throw new Error('GigaChat completion HTTP '+response.status);
   const body=await response.json() as {choices?:Array<{message?:{content?:string}}>;usage?:unknown};
