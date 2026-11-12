@@ -297,8 +297,8 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
                 setRecognitionStatus('Название сформировано автоматически. Проверьте перед публикацией.');
               }else setRecognitionStatus('Не удалось определить предмет. Введите название вручную.');
             }finally{bitmap.close();}
-          })().catch(()=>{
-            if(seq===recognitionSeq.current)setRecognitionStatus('Не удалось определить предмет. Введите название вручную.');
+          })().catch((error:unknown)=>{
+            if(seq===recognitionSeq.current)setRecognitionStatus('Распознавание не выполнено: '+errorText(error));
           }).finally(()=>{if(seq===recognitionSeq.current)setRecognitionBusy(false);});
 
 
