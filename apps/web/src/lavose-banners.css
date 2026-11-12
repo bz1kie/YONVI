@@ -1,29 +1,12 @@
 .lavose-banners{position:relative;overflow:hidden;min-height:390px;border-radius:24px;margin:18px 0 28px;background:radial-gradient(ellipse at 80% 50%,#34421d,#182021 45%,#0b1014 85%);color:white;display:flex;align-items:center}.lavose-banners-sell{background:linear-gradient(110deg,#101419,#30391c)}.lavose-banners-near{background:linear-gradient(110deg,#101419,#183e33)}.lavose-banners-circles{background:linear-gradient(110deg,#101419,#333722)}.lavose-banners-max{background:linear-gradient(110deg,#101419,#1b3b41)}.lavose-banners-content{position:relative;z-index:2;width:58%;padding:44px 15px 65px 5%}.lavose-banners-tag{font-size:11px;letter-spacing:.12em;font-weight:800;color:#c8ff28}.lavose-banners-content h1{font-size:clamp(30px,4vw,58px);line-height:1.07;margin:17px 0;font-weight:900;color:white}.lavose-banners-content h1 em{font-style:normal;color:#c8ff28}.lavose-banners-content p{font-size:16px;line-height:1.5;color:#d8dfd9;max-width:430px;margin:0 0 23px}.lavose-banners-action{border:0;border-radius:15px;padding:15px 24px;background:#c8ff28;color:#111;font-weight:850;cursor:pointer}.lavose-banners-art{position:absolute;right:0;top:0;bottom:0;width:49%;display:flex;align-items:center;justify-content:center;pointer-events:none}.lavose-banners-art img{width:100%;height:110%;object-fit:contain;mask-image:radial-gradient(ellipse at center,black 50%,transparent 75%)}.lavose-banners-glow{position:absolute;inset:15%;background:#baff2250;filter:blur(55px)}.lavose-banners-prop{position:absolute;right:9%;bottom:15%;font-size:58px}.lavose-banners-controls{position:absolute;left:5%;bottom:16px;z-index:3;display:flex;align-items:center;gap:12px}.lavose-banners-controls>button{border:1px solid #ffffff55;border-radius:50%;background:#ffffff20;color:white;width:30px;height:30px;font-size:23px;cursor:pointer}.lavose-banners-dots{display:flex;gap:7px}.lavose-banners-dots button{width:9px;height:9px;border:0;border-radius:10px;background:#ffffff80;cursor:pointer;padding:0}.lavose-banners-dots button.active{width:27px;background:#c8ff28}.lavose-banners button:focus-visible{outline:3px solid white;outline-offset:3px}@media(max-width:700px){.lavose-banners{min-height:505px;align-items:flex-start}.lavose-banners-content{width:100%;padding:26px 22px 0}.lavose-banners-content h1{font-size:34px}.lavose-banners-content p{font-size:13px;margin-bottom:15px}.lavose-banners-action{padding:12px 18px}.lavose-banners-art{top:auto;bottom:24px;width:78%;height:240px}.lavose-banners-prop{font-size:40px}.lavose-banners-controls{left:22px;bottom:14px}}
-/* Dedicated artwork fills the slide; readable HTML copy remains on top. */
-.lavose-banners-art{inset:0;width:100%;height:100%;z-index:0}
-.lavose-banners-art img{width:100%;height:100%;object-fit:cover;object-position:center center;mask-image:none;-webkit-mask-image:none}
+
+/* Banner images: never crop artwork. Final responsive sizing lives in prototype-layout.css. */
+.lavose-banners-art{inset:0 0 0 auto;width:75%;height:100%;z-index:0;overflow:hidden}
+.lavose-banners-art img{display:block;width:100%;height:100%;object-fit:contain;object-position:right center;mask-image:none;-webkit-mask-image:none}
 .lavose-banners-glow,.lavose-banners-prop{display:none}
-.lavose-banners-content{z-index:2;text-shadow:0 2px 16px #0008}
-.lavose-banners:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#07101685 0%,#07101633 43%,transparent 75%);pointer-events:none;z-index:1}
-.lavose-banners-controls{z-index:3}
-@media(max-width:700px){.lavose-banners-art{inset:0;width:100%;height:100%}.lavose-banners-art img{object-position:66% center}.lavose-banners:after{background:linear-gradient(180deg,#071016dd 0%,#07101699 48%,transparent 90%)}.lavose-banners-content{position:relative;z-index:2}}
-
-/* Banner framing: keep mascot and product scene visible without giant crop. */
-@media(min-width:701px){
- .lavose-banners{min-height:440px}
- .lavose-banners-art{left:auto;right:0;top:0;bottom:0;width:68%;height:100%}
- .lavose-banners-art img{width:100%;height:100%;object-fit:cover;object-position:52% center}
- .lavose-banners:after{background:linear-gradient(90deg,#071016 0%,#071016ee 26%,#071016aa 42%,#07101600 68%)}
- .lavose-banners-content{width:56%}
-}
-@media(max-width:700px){
- .lavose-banners{min-height:535px}
- .lavose-banners-art{inset:auto 0 0 0;width:100%;height:64%}
- .lavose-banners-art img{width:100%;height:100%;object-fit:cover;object-position:65% center}
- .lavose-banners:after{background:linear-gradient(180deg,#071016 0%,#071016ed 35%,#07101688 62%,transparent 100%)}
- .lavose-banners-content{padding-top:26px}
-}
-
+.lavose-banners-content{z-index:2}
+.lavose-banners:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#081310 0%,#081310f7 24%,#081310b0 42%,transparent 68%);pointer-events:none;z-index:1}
+@media(max-width:700px){.lavose-banners-art{inset:auto 0 0;width:100%;height:62%}.lavose-banners-art img{object-position:center bottom}.lavose-banners:after{background:linear-gradient(180deg,#081310,#081310ef 34%,#08131080 66%,transparent)}}
 /* Branded dimensional category illustrations; CSS-only and responsive. */
 .catalog-categories button{position:relative;overflow:hidden;transition:transform .18s ease,border-color .18s ease,background .18s ease}
 .catalog-categories button:hover{transform:translateY(-3px);border-color:#c8ff2880}
@@ -35,27 +18,3 @@
 .catalog-categories button:focus-visible{outline:2px solid #c8ff28;outline-offset:2px}
 @media(prefers-reduced-motion:reduce){.catalog-categories button,.lavose-category-art-object{transition:none}}
 
-/* Final banner fitting: preserve complete artwork instead of cropping the mascot. */
-@media(min-width:701px){
- .lavose-banners{min-height:clamp(360px,26vw,440px)}
- .lavose-banners-art{inset:0 0 0 auto;width:72%;height:100%;overflow:hidden;justify-content:flex-end}
- .lavose-banners-art img{width:100%;height:100%;object-fit:contain;object-position:right center}
- .lavose-banners:after{background:linear-gradient(90deg,#071016 0%,#071016f5 24%,#071016b0 42%,#07101600 67%)}
-}
-@media(max-width:700px){
- .lavose-banners-art{inset:auto 0 0 0;width:100%;height:63%;overflow:hidden}
- .lavose-banners-art img{width:100%;height:100%;object-fit:contain;object-position:center bottom}
-}
-
-/* V2: fit artwork to the entire banner, not a narrow 72% right-hand box. */
-@media(min-width:701px){
- .lavose-banners{height:clamp(370px,27vw,450px);min-height:0}
- .lavose-banners-art{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:hidden}
- .lavose-banners-art img{display:block;width:100%;height:100%;object-fit:contain;object-position:right center}
- .lavose-banners:after{background:linear-gradient(90deg,#071016 0%,#071016 17%,#071016e6 33%,#07101665 53%,transparent 73%)}
- .lavose-banners-content{width:50%;padding-left:5%}
-}
-@media(max-width:700px){
- .lavose-banners-art{position:absolute;inset:auto 0 0;width:100%;height:59%;display:block}
- .lavose-banners-art img{width:100%;height:100%;object-fit:contain;object-position:center bottom}
-}
