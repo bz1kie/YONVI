@@ -289,18 +289,26 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
             const seen=vision.status==='fulfilled'?vision.value:null;
             const updates:Partial<Draft>={};
             const ocrTitle=(read?.title||'').trim();
-            const hasCell=/\b(?:18650|21700|26650|14500)\b/i.test(read?.text||'');
+            const cellMatch=(read?.text||'').match(/\b(?:18650|21700|26650|14500)\b/i);
+            const hasCell=!!cellMatch;
             const looksLikeSpecs=/\b\d+(?:[.,]\d+)?\s*(?:v|в|mah|ah|wh|w)\b/i.test(ocrTitle);
             const reliableOcr=!!ocrTitle&&!looksLikeSpecs&&(/18650|21700|26650|14500|iphone|samsung|thinkpad/i.test(ocrTitle)||ocrTitle.split(/\s+/).length>=3&&/[А-Яа-яЁё]/.test(ocrTitle));
-            if(hasCell)updates.title='Аккумулятор Li-ion '+(read!.text.match(/\b(?:18650|21700|26650|14500)\b/i)?.[0]||'18650');
-            else if(reliableOcr)updates.title=ocrTitle;
-            else if(seen?.title)updates.title=seen.title;
-            // Do not put OCR fragments such as "2.7V BWW" into the title.
-
-            if(!editId&&(hasCell||read?.category||seen?.category))updates.category=hasCell?'electronics':(read?.category||seen!.category);
+            if(seen?.title){
+              updates.title=hasCell&&seen.category==='electronics'?'Аккумулятор Li-ion '+cellMatch![0]:seen.title;
+              if(!editId)updates.category=seen.category;
+            }else if(hasCell){
+              updates.title='Аккумулятор Li-ion '+cellMatch![0];
+              if(!editId)updates.category='electronics';
+            }else if(reliableOcr){
+              updates.title=ocrTitle;
+              if(!editId&&read?.category)updates.category=read.category;
+            }
             if(read?.barcode)updates.description='Штрихкод: '+read.barcode;
             setDraft(prev=>({...prev,...updates}));
-            setRecognitionStatus(updates.title||updates.category?'Предложены название и категория — проверьте их перед публикацией.':vision.status==='rejected'?'Визуальная модель не загрузилась, а надписи не распознаны надёжно. Заполните поля вручную.':'Товар не удалось определить надёжно. Заполните поля вручную.');
+            const visualStatus=vision.status==='rejected'?'Визуальная модель не запустилась':seen?'Предмет: '+seen.title+' ('+Math.round(seen.score*100)+'%)':'Предмет по фото не определён';
+            const textStatus=ocr.status==='rejected'?'OCR не сработал':hasCell?'Маркировка: '+cellMatch![0]:reliableOcr?'Надпись: '+ocrTitle:'Надёжное название по надписям не найдено';
+            setRecognitionStatus(visualStatus+'. '+textStatus+'. '+(updates.title?'Проверьте предложенное название.':'Введите название вручную.'));
+
           }).catch(()=>{if(seq===recognitionSeq.current)setRecognitionStatus('Не удалось распознать фото. Заполните данные вручную.');}).finally(()=>{if(seq===recognitionSeq.current)setRecognitionBusy(false);});
         }}/>
       <PhotoPreviews files={photoFiles}/>
