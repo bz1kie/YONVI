@@ -317,7 +317,7 @@ class App extends React.Component<{},State> {
   if(f.deal!=='all'&&l.deal!==f.deal)return false;
   if(f.minPrice&&l.price<Number(f.minPrice))return false;
   if(f.maxPrice&&l.price>Number(f.maxPrice))return false;
-  if(query){const normalize=(value:string)=>value.toLocaleLowerCase('ru-RU').replace(/ё/g,'е').replace(/[^\\p{L}\\p{N}]+/gu,' ').trim();const haystack=normalize(l.title+' '+l.description+' '+l.city);if(!normalize(query).split(/\\s+/).every(word=>haystack.includes(word)))return false;}
+  if(query){const normalize=(value:string)=>value.toLocaleLowerCase('ru-RU').replace(/ё/g,'е').replace(/[^\p{L}\p{N}]+/gu,' ').trim();const haystack=normalize(l.title+' '+l.description+' '+l.city);if(!normalize(query).split(/\s+/).every(word=>haystack.includes(word)))return false;}
   return true;
  }).sort((a,b)=>f.sort==='cheap'?a.price-b.price:f.sort==='expensive'?b.price-a.price:f.sort==='popular'?b.views-a.views:b.createdAt-a.createdAt);}
  shareItem(id:string){const url=location.origin+location.pathname+'?listing='+encodeURIComponent(id);this.copy(url);}
