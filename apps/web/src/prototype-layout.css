@@ -140,3 +140,14 @@ html,body,button,input,select,textarea{font-family:var(--lavos-font)}
 .product-info h3{font-weight:700;letter-spacing:-.012em;line-height:1.35}
 .catalog-categories button{font-weight:700;letter-spacing:-.015em}
 @media(max-width:700px){.catalog-screen .lavose-banners-content h1{line-height:1.14;letter-spacing:-.035em}}
+
+/* Hero image seam fix: blend the source artwork into the solid banner background.
+   Mask is applied to the artwork, not the mascot itself. */
+@media(min-width:701px){
+ .catalog-screen .lavose-banners{background:#081310}
+ .catalog-screen .lavose-banners-art{
+   -webkit-mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.03) 12%,rgba(0,0,0,.22) 27%,rgba(0,0,0,.7) 48%,#000 65%);
+   mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.03) 12%,rgba(0,0,0,.22) 27%,rgba(0,0,0,.7) 48%,#000 65%);
+ }
+ .catalog-screen .lavose-banners:after{background:linear-gradient(90deg,#081310 0%,rgba(8,19,16,.98) 24%,rgba(8,19,16,.65) 39%,transparent 67%)}
+}
