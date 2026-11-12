@@ -21,6 +21,29 @@ if (process.env.NODE_ENV === 'production' && !connectionString && !process.env.P
 const pool=new pg.Pool(connectionString ? {connectionString} : {});
 await app.register(cors,{origin:process.env.WEB_ORIGIN || 'http://localhost:5173'});
 
+
+app.post('/api/ai/recognize-product',{bodyLimit:6*1024*1024},async(req,reply)=>{
+ const userId=auth(req);if(!userId)return reply.code(401).send({error:'Требуется авторизация'});
+ const parsed=z.object({image:z.string().max(5_600_000),mimeType:z.enum(['image/jpeg','image/png','image/webp'])}).safeParse(req.body);
+ if(!parsed.success||!/^[A-Za-z0-9+/]+={0,2}$/.test(parsed.data.image))return reply.code(400).send({error:'Некорректная фотография'});
+ const key=process.env.GEMINI_API_KEY;
+ if(!key)return reply.code(503).send({error:'Распознавание временно недоступно'});
+ try{
+  const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),18000);
+  let response:Response;
+  try{response=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',{
+   method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json','x-goog-api-key':key},
+   body:JSON.stringify({contents:[{parts:[{text:'Определи товар на фотографии для объявления о продаже. Смотри на сам предмет и используй читаемую маркировку только для уточнения модели. Не придумывай бренд, модель или характеристики. Верни только JSON с полями title (краткое конкретное название на русском до 90 символов) и category (строго одно из electronics, gaming, fashion, home, transport, hobby, auto). Если предмет нельзя определить, title должен быть пустой строкой.'},{inline_data:{mime_type:parsed.data.mimeType,data:parsed.data.image}}]}],generationConfig:{responseMimeType:'application/json',temperature:0.1,maxOutputTokens:200}})});
+  }finally{clearTimeout(timeout);}
+  if(!response.ok){req.log.warn({status:response.status},'Gemini recognition failed');return reply.code(502).send({error:'Сервис распознавания временно недоступен'});}
+  const data=await response.json() as {candidates?:Array<{content?:{parts?:Array<{text?:string}>}}>}>;
+  const raw=data.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
+  const result=z.object({title:z.string().max(120),category:z.enum(['electronics','gaming','fashion','home','transport','hobby','auto'])}).safeParse(JSON.parse(raw));
+  if(!result.success)return reply.code(502).send({error:'Не удалось определить товар'});
+  return {title:result.data.title.trim(),category:result.data.category};
+ }catch(e){req.log.warn({message:e instanceof Error?e.message:'Unknown'},'Gemini request failed');return reply.code(502).send({error:'Не удалось распознать фотографию'});}
+});
+
 app.get('/health',async()=>({ok:true,service:'yorvi-api',version:'2.0.0-alpha.1'}));
 registerMaxAuthentication(app,pool);
 const auth=currentUserId;
