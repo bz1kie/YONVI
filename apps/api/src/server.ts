@@ -39,7 +39,7 @@ app.post('/api/ai/recognize-product',{bodyLimit:4*1024*1024},async(req,reply)=>{
   const clean=(s:string)=>s.replace(/\\s*[|—–].*$/,'').replace(/\\s*[-–]\\s*(купить|цена|доставка|отзывы).*$/i,'').trim().slice(0,110);
   const candidates=results.map(x=>clean(x.title)).filter(x=>x.length>=8&&x.length<=110&&!/^(купить|каталог|товары|изображения|яндекс)/i.test(x));
   const title=candidates[0]||'';
-  return {title,category:'home',matches:results.slice(0,6)};
+  return {title,category:null,matches:results.slice(0,6)};
  }catch(e){req.log.warn({message:e instanceof Error?e.message:'Unknown'},'Yandex image search error');return reply.code(502).send({error:'Не удалось выполнить поиск по фотографии'});}
 });
 
