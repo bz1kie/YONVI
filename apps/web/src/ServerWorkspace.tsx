@@ -281,9 +281,7 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
           const seq=++recognitionSeq.current;
           if(!files.length){setRecognitionStatus('');setRecognitionBusy(false);return;}
           setRecognitionBusy(true);setRecognitionStatus('Распознаём товар по фото…');
-          void (async()=>{
-            const file=files[0];
-            const bitmap=await createImageBitmap(file);
+e);
             try{
               const scale=Math.min(1,1280/Math.max(bitmap.width,bitmap.height));
               const canvas=document.createElement('canvas');
@@ -301,3 +299,4 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
           })().catch(()=>{
             if(seq===recognitionSeq.current)setRecognitionStatus('Не удалось определить предмет. Введите название вручную.');
           }).finally(()=>{if(seq===recognitionSeq.current)setRecognitionBusy(false);});
+
