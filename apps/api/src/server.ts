@@ -7,6 +7,7 @@ import cors from '@fastify/cors';
 import { connectConfiguredChannel } from './max-channel.js';
 import pg from 'pg';
 import { z } from 'zod';
+import { createHash } from 'node:crypto';
 import { canModerate } from './domain.mjs';
 import { registerMarketplaceRoutes } from './marketplace-routes.js';
 import { registerMaxAuthentication, currentUserId } from './max-session.js';
@@ -22,13 +23,23 @@ const pool=new pg.Pool(connectionString ? {connectionString} : {});
 await app.register(cors,{origin:process.env.WEB_ORIGIN || 'http://localhost:5173'});
 
 
+const imageSearchCache=new Map<string,{expires:number,result:{title:string;category:null;matches:Array<{title:string;url:string;description:string}>}}>();
+const imageSearchAttempts=new Map<string,{day:string,count:number}>();
+const imageSearchInFlight=new Map<string,Promise<{title:string;category:null;matches:Array<{title:string;url:string;description:string}>}>>();
 app.post('/api/ai/recognize-product',{bodyLimit:4*1024*1024},async(req,reply)=>{
  const userId=currentUserId(req);if(!userId)return reply.code(401).send({error:'Требуется авторизация'});
  const parsed=z.object({image:z.string().max(3_000_000),mimeType:z.enum(['image/jpeg','image/png','image/webp'])}).safeParse(req.body);
  if(!parsed.success||!/^[A-Za-z0-9+/]+={0,2}$/.test(parsed.data.image))return reply.code(400).send({error:'Некорректное изображение'});
+ const hash=createHash('sha256').update(parsed.data.mimeType).update(parsed.data.image).digest('hex');
+ const existing=imageSearchCache.get(hash);
+ if(existing&&existing.expires>Date.now())return {...existing.result,cached:true};
+ const pending=imageSearchInFlight.get(hash);
+ if(pending)return {...await pending,cached:true};
+ const day=new Date().toISOString().slice(0,10),id=String(userId),attempts=imageSearchAttempts.get(id);
+ if(attempts?.day===day&&attempts.count>=5)return reply.code(429).send({error:'Лимит поиска по фото: 5 запросов в день.'});
  const key=process.env.YANDEX_SEARCH_API_KEY,folderId=process.env.YANDEX_FOLDER_ID;
  if(!key||!folderId)return reply.code(503).send({error:'Поиск Яндекса не настроен'});
- try{
+ const request=async()=>{
   const response=await fetch('https://searchapi.api.cloud.yandex.net/v2/image/search_by_image',{
    method:'POST',headers:{'Content-Type':'application/json','Authorization':'Api-Key '+key},
    body:JSON.stringify({folderId,data:parsed.data.image,page:'0',familyMode:'FAMILY_MODE_STRICT'}),signal:AbortSignal.timeout(25000)
@@ -39,8 +50,12 @@ app.post('/api/ai/recognize-product',{bodyLimit:4*1024*1024},async(req,reply)=>{
   const clean=(s:string)=>s.replace(/\\s*[|—–].*$/,'').replace(/\\s*[-–]\\s*(купить|цена|доставка|отзывы).*$/i,'').trim().slice(0,110);
   const candidates=results.map(x=>clean(x.title)).filter(x=>x.length>=8&&x.length<=110&&!/^(купить|каталог|товары|изображения|яндекс)/i.test(x));
   const title=candidates[0]||'';
-  return {title,category:null,matches:results.slice(0,6)};
- }catch(e){req.log.warn({message:e instanceof Error?e.message:'Unknown'},'Yandex image search error');return reply.code(502).send({error:'Не удалось выполнить поиск по фотографии'});}
+  return {title,category:null as null,matches:results.slice(0,6)};
+ };
+ imageSearchAttempts.set(id,{day,count:attempts?.day===day?attempts.count+1:1});
+ const task=request();imageSearchInFlight.set(hash,task);
+ try{const result=await task;imageSearchCache.set(hash,{expires:Date.now()+30*24*3600*1000,result});if(imageSearchCache.size>2000)imageSearchCache.delete(imageSearchCache.keys().next().value!);return {...result,cached:false};}
+ catch(e){req.log.warn({message:e instanceof Error?e.message:'Unknown'},'Yandex image search error');return reply.code(502).send({error:'Не удалось выполнить поиск по фотографии'});}finally{imageSearchInFlight.delete(hash);imageSearchAttempts.set(id,{day,count:attempts?.day===day?attempts.count+1:1});}
 });
 
 app.get('/health',async()=>({ok:true,service:'yorvi-api',version:'2.0.0-alpha.1'}));
