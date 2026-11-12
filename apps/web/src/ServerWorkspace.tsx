@@ -278,28 +278,9 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
             notify('error','Выберите до 10 JPEG, PNG или WebP (до 5 МБ каждый).');e.target.value='';return;
           }
           completedPhotos.current=0;setPhotoFiles(files);
-          const seq=++recognitionSeq.current;
-          if(!files.length){setRecognitionStatus('');setRecognitionBusy(false);return;}
-          setRecognitionBusy(true);setRecognitionStatus('Распознаём товар по фото…');
-          void (async()=>{
-            const bitmap=await createImageBitmap(files[0]);
-            try{
-              const scale=Math.min(1,1920/Math.max(bitmap.width,bitmap.height));
-              const canvas=document.createElement('canvas');
-              canvas.width=Math.max(1,Math.round(bitmap.width*scale));
-              canvas.height=Math.max(1,Math.round(bitmap.height*scale));
-              canvas.getContext('2d')?.drawImage(bitmap,0,0,canvas.width,canvas.height);
-              const image=canvas.toDataURL('image/jpeg',0.85).split(',')[1];
-              const result=await api<{title:string;category:string}>('/api/ai/recognize-product',user,{method:'POST',body:JSON.stringify({image,mimeType:'image/jpeg'})},true);
-              if(seq!==recognitionSeq.current)return;
-              if(result.title){
-                setDraft(prev=>({...prev,title:result.title,...(!editId?{category:result.category}:{})}));
-                setRecognitionStatus('Название сформировано автоматически. Проверьте перед публикацией.');
-              }else setRecognitionStatus('Не удалось определить предмет. Введите название вручную.');
-            }finally{bitmap.close();}
-          })().catch((error:unknown)=>{
-            if(seq===recognitionSeq.current)setRecognitionStatus('Распознавание не выполнено: '+errorText(error));
-          }).finally(()=>{if(seq===recognitionSeq.current)setRecognitionBusy(false);});
+          ++recognitionSeq.current;
+          setRecognitionBusy(false);
+          setRecognitionStatus('');
 
 
         }}/>
