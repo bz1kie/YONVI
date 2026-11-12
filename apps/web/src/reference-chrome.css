@@ -1,0 +1,62 @@
+/* Reference chrome only. Banner artwork, copy, dimensions and carousel are untouched. */
+.sidebar .nav-item{font-weight:700}
+.sidebar .nav-item svg{color:inherit}
+.sidebar .side-nav{justify-content:flex-end}
+.sidebar-bottom{border-left:1px solid #293137;padding-left:18px}
+.catalog-screen .catalog-categories{gap:12px;margin-bottom:22px}
+.catalog-screen .catalog-categories button{height:120px;padding:5px 10px 10px;gap:0;border-radius:23px;border-color:#46505a;background:linear-gradient(145deg,#262e36,#171d23)}
+.catalog-screen .catalog-categories button.selected{border:2px solid #ceff19;background:linear-gradient(135deg,#253a1c,#111d17)}
+.catalog-screen .catalog-categories button b{font-size:16px;font-weight:750;line-height:22px;letter-spacing:-.025em}
+.catalog-screen .catalog-categories .category-art{display:block;flex-shrink:0;width:88px;height:88px;background-image:url('/assets/category-icons-reference.webp');background-size:400% 200%;background-repeat:no-repeat;filter:drop-shadow(0 4px 4px #0005)}
+.catalog-screen .catalog-categories .category-art-all{background-position:0% 0%;width:74px;height:88px;background-image:none;display:grid;place-items:center}
+.catalog-screen .category-art-all:before{content:'▦';font-size:62px;line-height:1;font-weight:800;color:#ceff19;text-shadow:0 0 12px #ceff1920}
+.catalog-screen .catalog-categories .category-art-electronics{background-position:33.333333% 0%}
+.catalog-screen .catalog-categories .category-art-gaming{background-position:66.666667% 0%}
+.catalog-screen .catalog-categories .category-art-fashion{background-position:100% 0%}
+.catalog-screen .catalog-categories .category-art-home{background-position:0% 100%}
+.catalog-screen .catalog-categories .category-art-transport{background-position:33.333333% 100%}
+.catalog-screen .catalog-categories .category-art-hobby{background-position:66.666667% 100%}
+.catalog-screen .catalog-categories .category-art-auto{background-position:100% 100%}
+.catalog-screen .lavose-listing-toolbar{display:flex;align-items:center;flex-wrap:nowrap;gap:24px;margin:0 0 18px;min-height:42px;padding:0}
+.catalog-screen .results-header h1{font-size:28px;line-height:1.25;letter-spacing:-.035em;font-weight:800;white-space:nowrap}
+.catalog-screen .results-header h1 small{font-size:15px;margin-left:9px;font-weight:500;color:#c8ced2}
+.catalog-screen .lavose-catalog-tabs{margin:0;gap:3px;padding:3px;background:linear-gradient(#252c33,#191f25)}
+.catalog-screen .lavose-catalog-tabs button{padding:10px 20px;font-size:13px;line-height:20px}
+.catalog-screen .results-header select{position:static;order:4;max-width:175px;padding:11px 16px;margin:0;font-size:12px;border:1px solid #59616a;border-radius:24px;background:linear-gradient(#252c33,#191f25)}
+.catalog-utilities{display:flex;order:3;gap:4px;margin-left:auto}
+.catalog-utilities button{display:grid;place-items:center;width:34px;height:34px;border:0;border-radius:50%;background:transparent;color:#aab4bb}
+.catalog-utilities button:hover,.catalog-utilities button[aria-expanded=true]{background:#283139;color:#ceff19}
+.catalog-screen .product-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:20px 16px}
+.catalog-screen .product-card{border:1px solid #56616a;border-radius:21px;background:linear-gradient(135deg,#222a31,#171e24);overflow:hidden}
+.catalog-screen .product-art{aspect-ratio:2.15!important;height:auto!important;border-radius:0}
+.catalog-screen .product-info{padding:8px 18px 12px;display:block;min-height:88px}
+.catalog-screen .product-price{font-size:23px;font-weight:900;line-height:1.2;letter-spacing:-.045em}
+.catalog-screen .product-info h3{font-size:15px;font-weight:550;line-height:1.4;letter-spacing:-.025em;margin:4px 0 5px;min-height:0}
+.catalog-screen .product-meta{display:flex;justify-content:space-between;flex-wrap:nowrap;gap:6px;font-size:12px;color:#e2e5e7;line-height:1.5}
+.catalog-screen .product-meta svg{color:#cad2d8;display:inline-block;vertical-align:-2px}
+.catalog-screen .heart-btn{width:34px;height:34px;right:10px;top:8px;border:1px solid #8a9399;box-shadow:0 2px 6px #0004;background:#fffffff0;color:#343b42}
+.catalog-screen .cart-toggle{font-size:0;background:transparent;color:#b9c3c9;float:right;padding:3px}
+@media(min-width:1025px){
+ .app-shell{max-width:1800px!important;width:calc(100% - 60px)!important}
+ .sidebar{height:86px;min-height:86px;padding:10px 0;gap:22px}
+ .sidebar .brand-btn{margin:0;flex:0 0 190px}
+ .sidebar .lavose-header-logo{width:190px;height:auto}
+ .sidebar .side-nav{gap:12px;margin-left:auto;flex:1}
+ .sidebar .nav-item{font-size:13px;padding:10px 14px;border-radius:18px;gap:8px;min-height:42px}
+ .sidebar .nav-item svg{display:block;width:21px;height:21px}
+ .sidebar .sidebar-bottom{gap:16px}
+ .sidebar .desktop-post{padding:11px 17px;min-height:42px;font-size:12px}
+ .app-shell[data-page=catalog] .topbar,.app-shell[data-page=home] .topbar{display:none!important}
+ .main-shell>.page-content{padding-top:0!important}
+}
+@media(min-width:701px) and (max-width:1300px){
+ .sidebar .side-nav{gap:4px}.sidebar .nav-item{font-size:11px;padding:9px}.sidebar .brand-btn{flex-basis:165px}.sidebar-bottom{padding-left:10px;gap:10px}.sidebar .sidebar-bottom{gap:9px}
+ .catalog-screen .catalog-categories button b{font-size:13px}.catalog-screen .catalog-categories .category-art{width:78px;height:78px}.catalog-screen .catalog-categories button{height:112px}
+ .catalog-screen .results-header h1{font-size:23px}.catalog-screen .lavose-listing-toolbar{gap:14px}.catalog-screen .lavose-catalog-tabs button{padding:9px 13px;font-size:12px}.catalog-screen .product-info{padding:8px 12px 10px}.catalog-screen .product-meta{font-size:10px}.catalog-screen .product-price{font-size:21px}.catalog-screen .product-info h3{font-size:13px}
+}
+@media(max-width:1024px) and (min-width:701px){.catalog-screen .product-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.catalog-screen .lavose-listing-toolbar{flex-wrap:wrap}.catalog-screen .results-header select{margin-left:auto}.catalog-screen .catalog-categories button b{font-size:11px}.catalog-screen .catalog-categories .category-art{width:68px;height:72px}}
+@media(max-width:700px){
+ .catalog-screen .catalog-categories button{height:112px;min-width:106px;padding:4px 8px 8px;border-radius:18px}.catalog-screen .catalog-categories button b{font-size:12px;line-height:18px}.catalog-screen .catalog-categories .category-art{width:78px;height:80px}
+ .catalog-screen .lavose-listing-toolbar{flex-wrap:wrap;gap:9px}.catalog-screen .results-header h1{font-size:21px}.catalog-screen .results-header h1 small{font-size:12px;margin-left:5px}.catalog-utilities{order:1}.catalog-utilities button{width:30px;height:32px}.catalog-screen .lavose-catalog-tabs{order:3;overflow-x:auto;max-width:100%}.catalog-screen .lavose-catalog-tabs button{font-size:11px;padding:8px 12px}.catalog-screen .results-header select{order:4;margin-left:auto;font-size:11px;padding:9px;max-width:140px}
+ .catalog-screen .product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 10px}.catalog-screen .product-art{aspect-ratio:1.25!important}.catalog-screen .product-info{padding:9px 10px}.catalog-screen .product-price{font-size:18px}.catalog-screen .product-info h3{font-size:13px;min-height:36px}.catalog-screen .product-meta{display:block;font-size:10px}
+}
