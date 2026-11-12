@@ -36,7 +36,7 @@ app.post('/api/ai/recognize-product',{bodyLimit:6*1024*1024},async(req,reply)=>{
    body:JSON.stringify({contents:[{parts:[{text:'Определи товар на фотографии для объявления о продаже. Смотри на сам предмет и используй читаемую маркировку только для уточнения модели. Не придумывай бренд, модель или характеристики. Верни только JSON с полями title (краткое конкретное название на русском до 90 символов) и category (строго одно из electronics, gaming, fashion, home, transport, hobby, auto). Если предмет нельзя определить, title должен быть пустой строкой.'},{inline_data:{mime_type:parsed.data.mimeType,data:parsed.data.image}}]}],generationConfig:{responseMimeType:'application/json',temperature:0.1,maxOutputTokens:200}})});
   }finally{clearTimeout(timeout);}
   if(!response.ok){req.log.warn({status:response.status},'Gemini recognition failed');return reply.code(502).send({error:'Сервис распознавания временно недоступен'});}
-  const data=await response.json() as {candidates?:Array<{content?:{parts?:Array<{text?:string}>}}>}>;
+  const data=await response.json() as {candidates?:Array<{content?:{parts?:Array<{text?:string}>}}>};
   const raw=data.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
   const result=z.object({title:z.string().max(120),category:z.enum(['electronics','gaming','fashion','home','transport','hobby','auto'])}).safeParse(JSON.parse(raw));
   if(!result.success)return reply.code(502).send({error:'Не удалось определить товар'});
