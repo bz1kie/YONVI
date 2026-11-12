@@ -305,9 +305,7 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
             }
             if(read?.barcode)updates.description='Штрихкод: '+read.barcode;
             setDraft(prev=>({...prev,...updates}));
-            const visualStatus=vision.status==='rejected'?'Визуальная модель не запустилась':seen?'Предмет: '+seen.title+' ('+Math.round(seen.score*100)+'%)':'Предмет по фото не определён';
-            const textStatus=ocr.status==='rejected'?'OCR не сработал':hasCell?'Маркировка: '+cellMatch![0]:reliableOcr?'Надпись: '+ocrTitle:'Надёжное название по надписям не найдено';
-            setRecognitionStatus(visualStatus+'. '+textStatus+'. '+(updates.title?'Проверьте предложенное название.':'Введите название вручную.'));
+            setRecognitionStatus(updates.title?'Название товара сформировано автоматически. Проверьте его перед публикацией.':'Не удалось надёжно определить товар. Введите название вручную.');
 
           }).catch(()=>{if(seq===recognitionSeq.current)setRecognitionStatus('Не удалось распознать фото. Заполните данные вручную.');}).finally(()=>{if(seq===recognitionSeq.current)setRecognitionBusy(false);});
         }}/>
