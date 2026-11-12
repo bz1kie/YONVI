@@ -7,7 +7,7 @@ import cors from '@fastify/cors';
 import { connectConfiguredChannel } from './max-channel.js';
 import pg from 'pg';
 import { z } from 'zod';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { canModerate } from './domain.mjs';
 import { registerMarketplaceRoutes } from './marketplace-routes.js';
 import { registerMaxAuthentication, currentUserId } from './max-session.js';
@@ -23,39 +23,62 @@ const pool=new pg.Pool(connectionString ? {connectionString} : {});
 await app.register(cors,{origin:process.env.WEB_ORIGIN || 'http://localhost:5173'});
 
 
-const imageSearchCache=new Map<string,{expires:number,result:{title:string;category:null;matches:Array<{title:string;url:string;description:string}>}}>();
-const imageSearchAttempts=new Map<string,{day:string,count:number}>();
-const imageSearchInFlight=new Map<string,Promise<{title:string;category:null;matches:Array<{title:string;url:string;description:string}>}>>();
+const recognitionCache=new Map<string,{expires:number,result:Record<string,unknown>}>();
+const recognitionQuota=new Map<string,{day:string,count:number}>();
+let gigaToken:{value:string;expires:number}|null=null;
+async function gigaAccessToken(){
+ const auth=process.env.GIGACHAT_AUTH_KEY;
+ if(!auth)throw new Error('GIGACHAT_NOT_CONFIGURED');
+ if(gigaToken&&gigaToken.expires>Date.now()+60000)return gigaToken.value;
+ const response=await fetch('https://ngw.devices.sberbank.ru:9443/api/v2/oauth',{
+  method:'POST',headers:{'Authorization':'Basic '+auth,'RqUID':randomUUID(),'Content-Type':'application/x-www-form-urlencoded'},
+  body:'scope='+encodeURIComponent(process.env.GIGACHAT_SCOPE||'GIGACHAT_API_PERS'),signal:AbortSignal.timeout(15000)
+ });
+ if(!response.ok)throw new Error('GigaChat OAuth HTTP '+response.status);
+ const data=await response.json() as {access_token:string;expires_at:number};
+ gigaToken={value:data.access_token,expires:data.expires_at};return data.access_token;
+}
 app.post('/api/ai/recognize-product',{bodyLimit:4*1024*1024},async(req,reply)=>{
  const userId=currentUserId(req);if(!userId)return reply.code(401).send({error:'Требуется авторизация'});
  const parsed=z.object({image:z.string().max(3_000_000),mimeType:z.enum(['image/jpeg','image/png','image/webp'])}).safeParse(req.body);
  if(!parsed.success||!/^[A-Za-z0-9+/]+={0,2}$/.test(parsed.data.image))return reply.code(400).send({error:'Некорректное изображение'});
+ if(!process.env.GIGACHAT_AUTH_KEY)return reply.code(503).send({error:'GigaChat ещё не подключён. Необходимо настроить ключ API.'});
  const hash=createHash('sha256').update(parsed.data.mimeType).update(parsed.data.image).digest('hex');
- const existing=imageSearchCache.get(hash);
- if(existing&&existing.expires>Date.now())return {...existing.result,cached:true};
- const pending=imageSearchInFlight.get(hash);
- if(pending)return {...await pending,cached:true};
- const day=new Date().toISOString().slice(0,10),id=String(userId),attempts=imageSearchAttempts.get(id);
- if(attempts?.day===day&&attempts.count>=5)return reply.code(429).send({error:'Лимит поиска по фото: 5 запросов в день.'});
- const key=process.env.YANDEX_SEARCH_API_KEY,folderId=process.env.YANDEX_FOLDER_ID;
- if(!key||!folderId)return reply.code(503).send({error:'Поиск Яндекса не настроен'});
- const request=async()=>{
-  const response=await fetch('https://searchapi.api.cloud.yandex.net/v2/image/search_by_image',{
-   method:'POST',headers:{'Content-Type':'application/json','Authorization':'Api-Key '+key},
-   body:JSON.stringify({folderId,data:parsed.data.image,page:'0',familyMode:'FAMILY_MODE_STRICT'}),signal:AbortSignal.timeout(25000)
+ const cached=recognitionCache.get(hash);
+ if(cached&&cached.expires>Date.now())return {...cached.result,cached:true};
+ const day=new Date().toISOString().slice(0,10),id=String(userId),quota=recognitionQuota.get(id);
+ if(quota?.day===day&&quota.count>=5)return reply.code(429).send({error:'Достигнут дневной лимит распознавания: 5 фото.'});
+ recognitionQuota.set(id,{day,count:quota?.day===day?quota.count+1:1});
+ try{
+  const token=await gigaAccessToken();
+  const bytes=Buffer.from(parsed.data.image,'base64');
+  const form=new FormData();
+  form.append('file',new Blob([bytes],{type:parsed.data.mimeType}),'product.jpg');
+  form.append('purpose','general');
+  const uploaded=await fetch('https://gigachat.devices.sberbank.ru/api/v1/files',{
+   method:'POST',headers:{Authorization:'Bearer '+token},body:form,signal:AbortSignal.timeout(25000)
   });
-  if(!response.ok){const detail=await response.text().catch(()=>'');req.log.warn({status:response.status,detail:detail.slice(0,300)},'Yandex image search failed');throw new Error('Yandex HTTP '+response.status);}
-  const data=await response.json() as {images?:Array<{pageTitle?:string;passage?:string;pageUrl?:string;host?:string}>};
-  const results=(data.images||[]).slice(0,12).map(x=>({title:(x.pageTitle||'').replace(/\\s+/g,' ').trim().slice(0,150),url:x.pageUrl||'',description:(x.passage||'').slice(0,180)})).filter(x=>x.title.length>4);
-  const clean=(s:string)=>s.replace(/\\s*[|—–].*$/,'').replace(/\\s*[-–]\\s*(купить|цена|доставка|отзывы).*$/i,'').trim().slice(0,110);
-  const candidates=results.map(x=>clean(x.title)).filter(x=>x.length>=8&&x.length<=110&&!/^(купить|каталог|товары|изображения|яндекс)/i.test(x));
-  const title=candidates[0]||'';
-  return {title,category:null as null,matches:results.slice(0,6)};
- };
- imageSearchAttempts.set(id,{day,count:attempts?.day===day?attempts.count+1:1});
- const task=request();imageSearchInFlight.set(hash,task);
- try{const result=await task;imageSearchCache.set(hash,{expires:Date.now()+30*24*3600*1000,result});if(imageSearchCache.size>2000)imageSearchCache.delete(imageSearchCache.keys().next().value!);return {...result,cached:false};}
- catch(e){req.log.warn({message:e instanceof Error?e.message:'Unknown'},'Yandex image search error');return reply.code(502).send({error:'Не удалось выполнить поиск по фотографии'});}finally{imageSearchInFlight.delete(hash);}
+  if(!uploaded.ok)throw new Error('GigaChat upload HTTP '+uploaded.status);
+  const file=await uploaded.json() as {id?:string};
+  if(!file.id)throw new Error('GigaChat file id missing');
+  const response=await fetch('https://gigachat.devices.sberbank.ru/api/v1/chat/completions',{
+   method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+   body:JSON.stringify({model:process.env.GIGACHAT_MODEL||'GigaChat-2',temperature:0.1,max_tokens:400,messages:[{role:'user',content:[
+    {type:'text',text:'Определи товар на фото для объявления. Верни только JSON: {"title":"название на русском","description":"краткое описание только достоверных видимых признаков","brand":"бренд или пусто","model":"модель только если точно читается, иначе пусто","category":"electronics|gaming|fashion|home|transport|hobby|auto"}. Не придумывай модель, состояние, повреждения, работоспособность и комплектацию.'},
+    {type:'image',image:{file_id:file.id}}
+   ]}]}),signal:AbortSignal.timeout(45000)
+  });
+  if(!response.ok)throw new Error('GigaChat completion HTTP '+response.status);
+  const body=await response.json() as {choices?:Array<{message?:{content?:string}}>;usage?:unknown};
+  const raw=body.choices?.[0]?.message?.content||'';
+  const match=raw.match(/\\{[\\s\\S]*\\}/);
+  if(!match)throw new Error('GigaChat response is not JSON');
+  const result=z.object({title:z.string().max(120).default(''),description:z.string().max(1000).default(''),brand:z.string().max(100).default(''),model:z.string().max(100).default(''),category:z.enum(['electronics','gaming','fashion','home','transport','hobby','auto']).nullable().optional()}).parse(JSON.parse(match[0]));
+  const output={...result,cached:false};
+  recognitionCache.set(hash,{expires:Date.now()+30*86400000,result:output});
+  if(recognitionCache.size>2000)recognitionCache.delete(recognitionCache.keys().next().value!);
+  return output;
+ }catch(error){req.log.error({message:error instanceof Error?error.message:'unknown'},'GigaChat recognition failed');return reply.code(502).send({error:'GigaChat временно недоступен. Заполните объявление вручную.'});}
 });
 
 app.get('/health',async()=>({ok:true,service:'yorvi-api',version:'2.0.0-alpha.1'}));
