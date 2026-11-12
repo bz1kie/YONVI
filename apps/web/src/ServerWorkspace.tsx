@@ -282,15 +282,20 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
           const seq=++recognitionSeq.current;
           if(!files.length){setRecognitionStatus('');setRecognitionBusy(false);return;}
           setRecognitionBusy(true);setRecognitionStatus('Распознаём товар по фото…');
-          void recognizeProduct(files[0]).then(result=>{
+          void Promise.allSettled([recognizeProduct(files[0]),recognizeVisual(files[0])]).then(([ocr,vision])=>{
             if(seq!==recognitionSeq.current)return;
+            const read=ocr.status==='fulfilled'?ocr.value:null;
+            const seen=vision.status==='fulfilled'?vision.value:null;
             const updates:Partial<Draft>={};
-            if(result.title)updates.title=result.title;
-            if(result.category&&!editId)updates.category=result.category;
-            if(result.barcode)updates.description='Штрихкод: '+result.barcode;
+            const specific=!!read?.title&&(/18650|21700|26650|14500|iphone|samsung|thinkpad/i.test(read.title)||read.title.length>22);
+            if(specific)updates.title=read!.title;
+            else if(seen?.title)updates.title=seen.title;
+            else if(read?.title)updates.title=read.title;
+            if(!editId&&(read?.category||seen?.category))updates.category=read?.category||seen!.category;
+            if(read?.barcode)updates.description='Штрихкод: '+read.barcode;
             setDraft(prev=>({...prev,...updates}));
-            setRecognitionStatus(result.title||result.category?'Название и категория предложены автоматически — проверьте их перед публикацией.':'Не удалось уверенно определить товар. Укажите название вручную или сфотографируйте маркировку крупнее.');
-          }).catch(()=>{if(seq===recognitionSeq.current)setRecognitionStatus('Не удалось распознать фото. Название и категорию можно заполнить вручную.');}).finally(()=>{if(seq===recognitionSeq.current)setRecognitionBusy(false);});
+            setRecognitionStatus(updates.title||updates.category?'Предмет распознан. Проверьте название и категорию перед публикацией.':'Товар не удалось определить. Укажите название вручную или сделайте более чёткое фото.');
+          }).catch(()=>{if(seq===recognitionSeq.current)setRecognitionStatus('Не удалось распознать фото. Заполните данные вручную.');}).finally(()=>{if(seq===recognitionSeq.current)setRecognitionBusy(false);});
         }}/>
       <PhotoPreviews files={photoFiles}/>
       {recognitionStatus&&<small role="status" className="sw-recognition-status">{recognitionBusy?'⌛ ':''}{recognitionStatus}</small>}
