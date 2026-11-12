@@ -34,3 +34,15 @@
 .lavose-category-art-all .lavose-category-art-object{font-family:system-ui,sans-serif;font-size:48px;font-weight:900;color:#c8ff28;text-shadow:0 3px 0 #719a00,0 8px 12px #000b}
 .catalog-categories button:focus-visible{outline:2px solid #c8ff28;outline-offset:2px}
 @media(prefers-reduced-motion:reduce){.catalog-categories button,.lavose-category-art-object{transition:none}}
+
+/* Final banner fitting: preserve complete artwork instead of cropping the mascot. */
+@media(min-width:701px){
+ .lavose-banners{min-height:clamp(360px,26vw,440px)}
+ .lavose-banners-art{inset:0 0 0 auto;width:72%;height:100%;overflow:hidden;justify-content:flex-end}
+ .lavose-banners-art img{width:100%;height:100%;object-fit:contain;object-position:right center}
+ .lavose-banners:after{background:linear-gradient(90deg,#071016 0%,#071016f5 24%,#071016b0 42%,#07101600 67%)}
+}
+@media(max-width:700px){
+ .lavose-banners-art{inset:auto 0 0 0;width:100%;height:63%;overflow:hidden}
+ .lavose-banners-art img{width:100%;height:100%;object-fit:contain;object-position:center bottom}
+}
