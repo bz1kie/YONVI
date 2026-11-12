@@ -238,3 +238,9 @@ html,body,button,input,select,textarea{font-family:var(--lavos-font)}
  .mobile-nav button span{font-size:10px!important;white-space:nowrap!important}
 }
 @media(max-width:370px){.catalog-screen .catalog-categories .category-art{width:48px!important;height:48px!important}.catalog-screen .catalog-categories button{min-height:94px!important}.mobile-create-post{font-size:10px!important}.catalog-screen .lavose-banners-content{width:80%!important}}
+
+/* MAX authentication bridge must remain mounted to exchange verified initData for a session. */
+.max-auth-bridge{position:fixed;right:12px;bottom:12px;z-index:105;max-width:240px}
+.max-auth-bridge .max-auth-badge{font-size:11px;padding:7px 10px;border-radius:12px;background:#18231d;color:#d8f4de;border:1px solid #3a5744}
+.max-auth-bridge .max-auth-badge.login-trigger{display:none}
+@media(max-width:700px){.max-auth-bridge{right:10px;bottom:calc(70px + env(safe-area-inset-bottom))}.max-auth-bridge .max-auth-badge{font-size:10px}}
