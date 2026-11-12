@@ -51,7 +51,7 @@ app.post('/api/ai/recognize-product',{bodyLimit:6*1024*1024},async(req,reply)=>{
    req.log.warn({status:response.status,detail:detail.slice(0,500)},'GLM Vision request rejected');
    return reply.code(502).send({error:'GLM Vision: ошибка провайдера ('+response.status+')'});
   }
-  const data=await response.json() as {choices?:Array<{message?:{content?:string|Array<{text?:string}>}}>}>;
+  const data=await response.json() as {choices?:Array<{message?:{content?:string|Array<{text?:string}>}}>};
   const content=data.choices?.[0]?.message?.content;
   const raw=typeof content==='string'?content:Array.isArray(content)?content.map(x=>x.text||'').join(''):'';
   const jsonText=raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
