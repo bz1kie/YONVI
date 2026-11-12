@@ -129,3 +129,14 @@ body{background:var(--bg)}
    mask-image:linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.55) 20%,#000 45%);
  }
 }
+
+/* Lavos Sans Standard typography tuning — classic Cyrillic Л, upright family. */
+:root{--lavos-font:'Noto Sans',Inter,'Segoe UI',Arial,sans-serif}
+html,body,button,input,select,textarea{font-family:var(--lavos-font)}
+.catalog-screen .lavose-banners-content h1{font-weight:900;letter-spacing:-.045em;line-height:1.11}
+.catalog-screen .lavose-banners-content p{font-weight:400;line-height:1.58}
+.catalog-screen .lavose-banners-action{font-weight:700;letter-spacing:-.015em}
+.product-price,.detail-price{font-weight:900;letter-spacing:-.035em;font-variant-numeric:lining-nums tabular-nums}
+.product-info h3{font-weight:700;letter-spacing:-.012em;line-height:1.35}
+.catalog-categories button{font-weight:700;letter-spacing:-.015em}
+@media(max-width:700px){.catalog-screen .lavose-banners-content h1{line-height:1.14;letter-spacing:-.035em}}
