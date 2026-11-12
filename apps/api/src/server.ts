@@ -53,7 +53,7 @@ app.post('/api/ai/recognize-product',{bodyLimit:4*1024*1024},async(req,reply)=>{
   const token=await gigaAccessToken();
   const bytes=Buffer.from(parsed.data.image,'base64');
   const form=new FormData();
-  form.append('file',new Blob([bytes],{type:parsed.data.mimeType}),'product.jpg');
+  form.append('file',new Blob([Uint8Array.from(bytes)],{type:parsed.data.mimeType}),'product.jpg');
   form.append('purpose','general');
   const uploaded=await fetch('https://gigachat.devices.sberbank.ru/api/v1/files',{
    method:'POST',headers:{Authorization:'Bearer '+token},body:form,signal:AbortSignal.timeout(25000)
