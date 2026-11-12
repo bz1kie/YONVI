@@ -8,7 +8,7 @@ export default function PhotoRecognition({image,onApply}:Props){
  const [result,setResult]=useState<Result|null>(null);
  async function recognize(){
   if(!image||busy)return;
-  setBusy(true);setResult(null);setStatus('Gemini анализирует фотографию…');
+  setBusy(true);setResult(null);setStatus('GLM Vision анализирует фотографию…');
   try{
    const blob=await (await fetch(image)).blob();
    const bitmap=await createImageBitmap(blob);
@@ -24,15 +24,15 @@ export default function PhotoRecognition({image,onApply}:Props){
    const response=await fetch('/api/ai/recognize-product',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:base64,mimeType:'image/jpeg'})});
    const data=await response.json().catch(()=>({})) as {title?:string;category?:string;error?:string};
    if(!response.ok)throw new Error(response.status+' · '+(data.error||'Ошибка API'));
-   if(!data.title){setStatus('Gemini не смог определить предмет. Попробуйте другое фото.');return;}
+   if(!data.title){setStatus('GLM Vision не смог определить предмет. Попробуйте другое фото.');return;}
    setResult({title:data.title,category:data.category||''});
-   setStatus('Gemini определил название. Проверьте его перед публикацией.');
-  }catch(e){setStatus('Ошибка Gemini: '+(e instanceof Error?e.message:'Неизвестная ошибка'));}
+   setStatus('GLM Vision определил название. Проверьте его перед публикацией.');
+  }catch(e){setStatus('Ошибка GLM Vision: '+(e instanceof Error?e.message:'Неизвестная ошибка'));}
   finally{setBusy(false);}
  }
  return <div className="photo-recognition">
-  <button type="button" className="btn btn-secondary" disabled={!image||busy} onClick={recognize}>{busy?'Распознаём…':'Определить товар через Gemini'}</button>
-  <small>Визуальное распознавание через Gemini API. Требуется авторизация.</small>
+  <button type="button" className="btn btn-secondary" disabled={!image||busy} onClick={recognize}>{busy?'Распознаём…':'Определить товар через GLM Vision'}</button>
+  <small>Визуальное распознавание через GLM Vision API. Требуется авторизация.</small>
   {status&&<p role="status">{status}</p>}
   {result&&<div className="photo-recognition-result">
    <p><b>Название:</b> {result.title}</p>
