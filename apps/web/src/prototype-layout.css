@@ -111,3 +111,21 @@ body{background:var(--bg)}
  .catalog-screen .lavose-banners:after{background:linear-gradient(180deg,#081310 0%,#081310ef 34%,#08131080 66%,transparent 100%)}
  .catalog-screen .lavose-banners-content{z-index:2;width:100%;padding:22px 20px 0}
 }
+
+/* Seamless illustration transition: fade the left edge of the artwork itself.
+   The right side remains fully opaque and the full mascot stays visible. */
+@media(min-width:701px){
+ .catalog-screen .lavose-banners-art{
+   -webkit-mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.08) 10%,rgba(0,0,0,.55) 24%,#000 44%);
+   mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.08) 10%,rgba(0,0,0,.55) 24%,#000 44%);
+ }
+ .catalog-screen .lavose-banners:after{
+   background:linear-gradient(90deg,#081310 0%,#081310 23%,rgba(8,19,16,.92) 34%,rgba(8,19,16,.58) 47%,rgba(8,19,16,0) 65%);
+ }
+}
+@media(max-width:700px){
+ .catalog-screen .lavose-banners-art{
+   -webkit-mask-image:linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.55) 20%,#000 45%);
+   mask-image:linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.55) 20%,#000 45%);
+ }
+}
