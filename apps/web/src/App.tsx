@@ -157,7 +157,7 @@ const LAVOSE_BANNERS = [
  {title:'Лавось всегда',accent:'под рукой.',description:'Открывай объявления и находки прямо в MAX.',cta:'Открыть в MAX',theme:'max',tag:'ЛАВОСЬ В MAX',emoji:'📱'}
 ] as const;
 function LavoseBannerCarousel({onCreate,onCatalog,onNearby,onCircles}:{onCreate:()=>void;onCatalog:()=>void;onNearby:()=>void;onCircles:()=>void}){
- const [active,setActive]=React.useState(0);
+ const [active,setActive]=React.useState(4);
  const [paused,setPaused]=React.useState(false);
  React.useEffect(()=>{
   if(paused||typeof window==='undefined'||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
@@ -174,7 +174,7 @@ function LavoseBannerCarousel({onCreate,onCatalog,onNearby,onCircles}:{onCreate:
    <p>{item.description}</p>
    <button type="button" className="lavose-banners-action" onClick={action}>{item.cta}<span aria-hidden="true"> →</span></button>
   </div>
-  <div className="lavose-banners-art" aria-hidden="true"><div className="lavose-banners-glow"/><img key={active} src={`/assets/lavose-banner-${active+1}.webp`} onError={e=>{e.currentTarget.onerror=null;e.currentTarget.src="/assets/yori-raccoon-large.webp";}} alt=""/></div>
+  <div className="lavose-banners-art" aria-hidden="true"><div className="lavose-banners-glow"/><img key={active} src={`/assets/lavose-banner-${[1,2,5,4,3][active]}.webp`} onError={e=>{e.currentTarget.onerror=null;e.currentTarget.src="/assets/yori-raccoon-large.webp";}} alt=""/></div>
   <div className="lavose-banners-controls"><button type="button" onClick={()=>move(-1)} aria-label="Предыдущий баннер">‹</button><div className="lavose-banners-dots">{LAVOSE_BANNERS.map((b,i)=><button key={b.theme} type="button" aria-label={'Баннер '+(i+1)+': '+b.title} aria-current={active===i?'true':undefined} className={active===i?'active':''} onClick={()=>setActive(i)}/>)}</div><button type="button" onClick={()=>move(1)} aria-label="Следующий баннер">›</button></div>
  </section>;
 }
