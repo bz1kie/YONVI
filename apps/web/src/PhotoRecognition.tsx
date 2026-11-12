@@ -2,7 +2,7 @@ import React, {useState} from 'react';
 
 type Props={image?:string; onApply:(data:{title?:string;description?:string})=>void};
 type Result={barcode?:string;text:string;title?:string};
-const clean=(s:string)=>s.replace(/[^\\p{L}\\p{N} ._+\/-]/gu,' ').replace(/\s+/g,' ').trim();
+const clean=(s:string)=>s.replace(/[^\p{L}\p{N} ._+\/-]/gu,' ').replace(/\s+/g,' ').trim();
 function validGTIN(s:string){if(!/^(\d{8}|\d{12,14})$/.test(s))return false;let sum=0;for(let i=s.length-2,k=0;i>=0;i--,k++)sum+=Number(s[i])*(k%2===0?3:1);return (10-sum%10)%10===Number(s[s.length-1]);}
 function suggest(text:string,barcode?:string):Result{
  const lines=text.split(/\r?\n/).map(clean).filter(x=>x.length>=3&&x.length<=90);
