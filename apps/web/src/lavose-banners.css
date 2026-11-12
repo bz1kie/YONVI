@@ -46,3 +46,16 @@
  .lavose-banners-art{inset:auto 0 0 0;width:100%;height:63%;overflow:hidden}
  .lavose-banners-art img{width:100%;height:100%;object-fit:contain;object-position:center bottom}
 }
+
+/* V2: fit artwork to the entire banner, not a narrow 72% right-hand box. */
+@media(min-width:701px){
+ .lavose-banners{height:clamp(370px,27vw,450px);min-height:0}
+ .lavose-banners-art{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:hidden}
+ .lavose-banners-art img{display:block;width:100%;height:100%;object-fit:contain;object-position:right center}
+ .lavose-banners:after{background:linear-gradient(90deg,#071016 0%,#071016 17%,#071016e6 33%,#07101665 53%,transparent 73%)}
+ .lavose-banners-content{width:50%;padding-left:5%}
+}
+@media(max-width:700px){
+ .lavose-banners-art{position:absolute;inset:auto 0 0;width:100%;height:59%;display:block}
+ .lavose-banners-art img{width:100%;height:100%;object-fit:contain;object-position:center bottom}
+}
