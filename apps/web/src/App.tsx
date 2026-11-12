@@ -208,7 +208,7 @@ class App extends React.Component<{},State> {
       if(!this.initialLinkOpened){
         this.initialLinkOpened=true;
         const id=new URLSearchParams(window.location.search).get('listing');
-        if(id&&/^[0-9a-f-]{36}$/i.test(id)){this.setState({page:'catalog'});this.openListing(id);}
+        if(id&&/^[0-9a-f-]{36}$/i.test(id)){this.setState({page:'catalog'});if(remote.some(l=>l.id===id))this.openListing(id);else void this.openRemoteListing(id);}
       }
     });
   }).catch(()=>this.setState({
@@ -253,6 +253,7 @@ class App extends React.Component<{},State> {
  say(message:string){this.setState({toast:message});window.setTimeout(()=>{if(this.state.toast===message)this.setState({toast:''});},3200);}
  go(page:Page){if(['favorites','cart','account','server','my','moderation','messages'].includes(page)&&!this.state.favoritesAuthenticated){this.setState({loginOpen:true});return;}const target=!import.meta.env.DEV&&(page==='my'||page==='moderation')?'server':page;this.setState({page:target,selectedListing:null,activeCircle:null,createOpen:false,filterOpen:false});window.scrollTo(0,0);}
  closeDetails=()=>this.setState({selectedListing:null});
+ async openRemoteListing(id:string){try{const response=await fetch('/api/listings/'+encodeURIComponent(id),{credentials:'same-origin'});if(!response.ok)return;const data=await response.json() as {listing?:ServerListing}&Partial<ServerListing>;const listing=data.listing||data;if(!listing?.id||!listing.title)return;const item=this.toListing(listing);this.setState(state=>({listings:state.listings.some(l=>l.id===id)?state.listings:[item,...state.listings]}),()=>this.openListing(id));}catch{/* Public listing may have been removed. */}}
  openListing(id:string){this.setState({selectedListing:id,activeCircle:null,createOpen:false},()=>this.updatePageMeta());}
  async favorite(id:string){
   if(import.meta.env.DEV && !this.state.favoritesAuthenticated && !/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(id)){
