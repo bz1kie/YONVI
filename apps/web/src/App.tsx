@@ -252,7 +252,7 @@ class App extends React.Component<{},State> {
  onKeyDown=(e:KeyboardEvent)=>{if(e.key==='Escape'&&(this.state.selectedListing||this.state.createOpen||this.state.helpOpen||this.state.loginOpen)){this.setState({selectedListing:null,createOpen:false,helpOpen:false,loginOpen:false});}};
  say(message:string){this.setState({toast:message});window.setTimeout(()=>{if(this.state.toast===message)this.setState({toast:''});},3200);}
  go(page:Page){if(['favorites','cart','account','server','my','moderation','messages'].includes(page)&&!this.state.favoritesAuthenticated){this.setState({loginOpen:true});return;}const target=!import.meta.env.DEV&&(page==='my'||page==='moderation')?'server':page;this.setState({page:target,selectedListing:null,activeCircle:null,createOpen:false,filterOpen:false});window.scrollTo(0,0);}
- closeDetails=()=>this.setState({selectedListing:null});
+ closeDetails=()=>this.setState({selectedListing:null},()=>this.updatePageMeta());
  async openRemoteListing(id:string){try{const response=await fetch('/api/listings/'+encodeURIComponent(id),{credentials:'same-origin'});if(!response.ok)return;const data=await response.json() as {listing?:ServerListing}&Partial<ServerListing>;const listing=data.listing||data;if(!listing?.id||!listing.title)return;const item=this.toListing(listing);this.setState(state=>({listings:state.listings.some(l=>l.id===id)?state.listings:[item,...state.listings]}),()=>this.openListing(id));}catch{/* Public listing may have been removed. */}}
  openListing(id:string){this.setState({selectedListing:id,activeCircle:null,createOpen:false},()=>this.updatePageMeta());}
  async favorite(id:string){
