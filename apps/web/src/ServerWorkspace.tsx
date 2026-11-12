@@ -280,7 +280,7 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
           completedPhotos.current=0;setPhotoFiles(files);
           const seq=++recognitionSeq.current;
           if(!files.length){setRecognitionStatus('');setRecognitionBusy(false);return;}
-          setRecognitionBusy(true);setRecognitionStatus('Яндекс ищет похожие товары…');
+          setRecognitionBusy(true);setRecognitionStatus('GigaChat распознаёт товар…');
           void (async()=>{
             const bitmap=await createImageBitmap(files[0]);
             try{
@@ -290,9 +290,9 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
               canvas.height=Math.max(1,Math.round(bitmap.height*scale));
               canvas.getContext('2d')?.drawImage(bitmap,0,0,canvas.width,canvas.height);
               const image=canvas.toDataURL('image/jpeg',0.65).split(',')[1];
-              const result=await api<{title:string;category:string|null}>('/api/ai/recognize-product',user,{method:'POST',body:JSON.stringify({image,mimeType:'image/jpeg'})},true);
+              const result=await api<{title:string;category:string|null;description?:string;brand?:string;model?:string}>('/api/ai/recognize-product',user,{method:'POST',body:JSON.stringify({image,mimeType:'image/jpeg'})},true);
               if(seq!==recognitionSeq.current)return;
-              if(result.title){setDraft(prev=>({...prev,title:prev.title||result.title}));setRecognitionStatus('Яндекс нашёл похожий товар. Проверьте название перед публикацией.');}
+              if(result.title){setDraft(prev=>({...prev,title:prev.title||result.title,description:prev.description||result.description||'',category:result.category||prev.category,attributes:{...prev.attributes,manufacturer:prev.attributes.manufacturer||result.brand||'',model:prev.attributes.model||result.model||''}}));setRecognitionStatus('GigaChat заполнил доступные поля. Проверьте название и модель.');}
               else setRecognitionStatus('Совпадений не найдено. Введите название вручную.');
             }finally{bitmap.close();}
           })().catch((error:unknown)=>{if(seq===recognitionSeq.current)setRecognitionStatus('Поиск не выполнен: '+errorText(error));}).finally(()=>{if(seq===recognitionSeq.current)setRecognitionBusy(false);});
@@ -301,7 +301,7 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
         }}/>
       <PhotoPreviews files={photoFiles}/>
       {recognitionStatus&&<small role="status" className="sw-recognition-status">{recognitionBusy?'⌛ ':''}{recognitionStatus}</small>}
-      {photoFiles.length>0&&<button type="button" className="btn btn-secondary" disabled={recognitionBusy} onClick={()=>document.getElementById('sw-create-photos')?.dispatchEvent(new Event('change',{bubbles:true}))}>Повторить поиск по первой фотографии</button>}
+      {photoFiles.length>0&&<button type="button" className="btn btn-secondary" disabled={recognitionBusy} onClick={()=>{const file=photoFiles[0];if(!file)return;const input=document.getElementById('sw-create-photos') as HTMLInputElement|null;if(input){const transfer=new DataTransfer();photoFiles.forEach(f=>transfer.items.add(f));input.files=transfer.files;input.dispatchEvent(new Event('change',{bubbles:true}));}}}>Повторить поиск по первой фотографии</button>}
       {photoFiles.length?<div className="sw-photo-chips">{photoFiles.map((file,i)=><span key={file.name+'-'+i}>{i+1}. {file.name}</span>)}</div>:null}
       <small>Текст черновика сохраняется на этом устройстве. После перезапуска фотографии нужно выбрать заново.</small>
     </div>
