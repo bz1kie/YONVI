@@ -288,14 +288,19 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
             const read=ocr.status==='fulfilled'?ocr.value:null;
             const seen=vision.status==='fulfilled'?vision.value:null;
             const updates:Partial<Draft>={};
-            const specific=!!read?.title&&(/18650|21700|26650|14500|iphone|samsung|thinkpad/i.test(read.title));
-            if(specific)updates.title=read!.title;
+            const ocrTitle=(read?.title||'').trim();
+            const hasCell=/\\b(?:18650|21700|26650|14500)\\b/i.test(read?.text||'');
+            const looksLikeSpecs=/\\b\\d+(?:[.,]\\d+)?\\s*(?:v|в|mah|ah|wh|w)\\b/i.test(ocrTitle);
+            const reliableOcr=!!ocrTitle&&!looksLikeSpecs&&(/18650|21700|26650|14500|iphone|samsung|thinkpad/i.test(ocrTitle)||ocrTitle.split(/\\s+/).length>=3&&/[А-Яа-яЁё]/.test(ocrTitle));
+            if(hasCell)updates.title='Аккумулятор Li-ion '+(read!.text.match(/\\b(?:18650|21700|26650|14500)\\b/i)?.[0]||'18650');
+            else if(reliableOcr)updates.title=ocrTitle;
             else if(seen?.title)updates.title=seen.title;
-            else if(read?.title&&read.title.length>=8)updates.title=read.title;
-            if(!editId&&(read?.category||seen?.category))updates.category=read?.category||seen!.category;
+            // Do not put OCR fragments such as "2.7V BWW" into the title.
+
+            if(!editId&&(hasCell||read?.category||seen?.category))updates.category=hasCell?'electronics':(read?.category||seen!.category);
             if(read?.barcode)updates.description='Штрихкод: '+read.barcode;
             setDraft(prev=>({...prev,...updates}));
-            setRecognitionStatus(updates.title||updates.category?'Предмет распознан. Проверьте название и категорию перед публикацией.':'Товар не удалось определить. Укажите название вручную или сделайте более чёткое фото.');
+            setRecognitionStatus(updates.title||updates.category?'Предложены название и категория — проверьте их перед публикацией.':vision.status==='rejected'?'Визуальная модель не загрузилась, а надписи не распознаны надёжно. Заполните поля вручную.':'Товар не удалось определить надёжно. Заполните поля вручную.');
           }).catch(()=>{if(seq===recognitionSeq.current)setRecognitionStatus('Не удалось распознать фото. Заполните данные вручную.');}).finally(()=>{if(seq===recognitionSeq.current)setRecognitionBusy(false);});
         }}/>
       <PhotoPreviews files={photoFiles}/>
