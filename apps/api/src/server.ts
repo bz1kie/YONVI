@@ -22,6 +22,27 @@ const pool=new pg.Pool(connectionString ? {connectionString} : {});
 await app.register(cors,{origin:process.env.WEB_ORIGIN || 'http://localhost:5173'});
 
 
+app.post('/api/ai/recognize-product',{bodyLimit:4*1024*1024},async(req,reply)=>{
+ const userId=currentUserId(req);if(!userId)return reply.code(401).send({error:'Требуется авторизация'});
+ const parsed=z.object({image:z.string().max(3_000_000),mimeType:z.enum(['image/jpeg','image/png','image/webp'])}).safeParse(req.body);
+ if(!parsed.success||!/^[A-Za-z0-9+/]+={0,2}$/.test(parsed.data.image))return reply.code(400).send({error:'Некорректное изображение'});
+ const key=process.env.YANDEX_SEARCH_API_KEY,folderId=process.env.YANDEX_FOLDER_ID;
+ if(!key||!folderId)return reply.code(503).send({error:'Поиск Яндекса не настроен'});
+ try{
+  const response=await fetch('https://searchapi.api.cloud.yandex.net/v2/image/search_by_image',{
+   method:'POST',headers:{'Content-Type':'application/json','Authorization':'Api-Key '+key},
+   body:JSON.stringify({folderId,data:parsed.data.image,page:'0',familyMode:'FAMILY_MODE_STRICT'}),signal:AbortSignal.timeout(25000)
+  });
+  if(!response.ok){const detail=await response.text().catch(()=>'');req.log.warn({status:response.status,detail:detail.slice(0,300)},'Yandex image search failed');return reply.code(502).send({error:'Поиск Яндекса недоступен ('+response.status+')'});}
+  const data=await response.json() as {images?:Array<{pageTitle?:string;passage?:string;pageUrl?:string;host?:string}>};
+  const results=(data.images||[]).slice(0,12).map(x=>({title:(x.pageTitle||'').replace(/\\s+/g,' ').trim().slice(0,150),url:x.pageUrl||'',description:(x.passage||'').slice(0,180)})).filter(x=>x.title.length>4);
+  const clean=(s:string)=>s.replace(/\\s*[|—–].*$/,'').replace(/\\s*[-–]\\s*(купить|цена|доставка|отзывы).*$/i,'').trim().slice(0,110);
+  const candidates=results.map(x=>clean(x.title)).filter(x=>x.length>=8&&x.length<=110&&!/^(купить|каталог|товары|изображения|яндекс)/i.test(x));
+  const title=candidates[0]||'';
+  return {title,category:'home',matches:results.slice(0,6)};
+ }catch(e){req.log.warn({message:e instanceof Error?e.message:'Unknown'},'Yandex image search error');return reply.code(502).send({error:'Не удалось выполнить поиск по фотографии'});}
+});
+
 app.get('/health',async()=>({ok:true,service:'yorvi-api',version:'2.0.0-alpha.1'}));
 registerMaxAuthentication(app,pool);
 const auth=currentUserId;
