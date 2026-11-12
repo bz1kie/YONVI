@@ -287,10 +287,10 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
             const read=ocr.status==='fulfilled'?ocr.value:null;
             const seen=vision.status==='fulfilled'?vision.value:null;
             const updates:Partial<Draft>={};
-            const specific=!!read?.title&&(/18650|21700|26650|14500|iphone|samsung|thinkpad/i.test(read.title)||read.title.length>22);
+            const specific=!!read?.title&&(/18650|21700|26650|14500|iphone|samsung|thinkpad/i.test(read.title));
             if(specific)updates.title=read!.title;
             else if(seen?.title)updates.title=seen.title;
-            else if(read?.title)updates.title=read.title;
+            else if(read?.title&&read.title.length>=8)updates.title=read.title;
             if(!editId&&(read?.category||seen?.category))updates.category=read?.category||seen!.category;
             if(read?.barcode)updates.description='Штрихкод: '+read.barcode;
             setDraft(prev=>({...prev,...updates}));
