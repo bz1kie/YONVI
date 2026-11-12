@@ -44,7 +44,7 @@ app.post('/api/ai/recognize-product',{bodyLimit:4*1024*1024},async(req,reply)=>{
    method:'POST',headers:{'Content-Type':'application/json','Authorization':'Api-Key '+key},
    body:JSON.stringify({folderId,data:parsed.data.image,page:'0',familyMode:'FAMILY_MODE_STRICT'}),signal:AbortSignal.timeout(25000)
   });
-  if(!response.ok){const detail=await response.text().catch(()=>'');req.log.warn({status:response.status,detail:detail.slice(0,300)},'Yandex image search failed');return reply.code(502).send({error:'Поиск Яндекса недоступен ('+response.status+')'});}
+  if(!response.ok){const detail=await response.text().catch(()=>'');req.log.warn({status:response.status,detail:detail.slice(0,300)},'Yandex image search failed');throw new Error('Yandex HTTP '+response.status);}
   const data=await response.json() as {images?:Array<{pageTitle?:string;passage?:string;pageUrl?:string;host?:string}>};
   const results=(data.images||[]).slice(0,12).map(x=>({title:(x.pageTitle||'').replace(/\\s+/g,' ').trim().slice(0,150),url:x.pageUrl||'',description:(x.passage||'').slice(0,180)})).filter(x=>x.title.length>4);
   const clean=(s:string)=>s.replace(/\\s*[|—–].*$/,'').replace(/\\s*[-–]\\s*(купить|цена|доставка|отзывы).*$/i,'').trim().slice(0,110);
@@ -55,7 +55,7 @@ app.post('/api/ai/recognize-product',{bodyLimit:4*1024*1024},async(req,reply)=>{
  imageSearchAttempts.set(id,{day,count:attempts?.day===day?attempts.count+1:1});
  const task=request();imageSearchInFlight.set(hash,task);
  try{const result=await task;imageSearchCache.set(hash,{expires:Date.now()+30*24*3600*1000,result});if(imageSearchCache.size>2000)imageSearchCache.delete(imageSearchCache.keys().next().value!);return {...result,cached:false};}
- catch(e){req.log.warn({message:e instanceof Error?e.message:'Unknown'},'Yandex image search error');return reply.code(502).send({error:'Не удалось выполнить поиск по фотографии'});}finally{imageSearchInFlight.delete(hash);imageSearchAttempts.set(id,{day,count:attempts?.day===day?attempts.count+1:1});}
+ catch(e){req.log.warn({message:e instanceof Error?e.message:'Unknown'},'Yandex image search error');return reply.code(502).send({error:'Не удалось выполнить поиск по фотографии'});}finally{imageSearchInFlight.delete(hash);}
 });
 
 app.get('/health',async()=>({ok:true,service:'yorvi-api',version:'2.0.0-alpha.1'}));
