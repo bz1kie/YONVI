@@ -289,10 +289,10 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
             const seen=vision.status==='fulfilled'?vision.value:null;
             const updates:Partial<Draft>={};
             const ocrTitle=(read?.title||'').trim();
-            const hasCell=/\\b(?:18650|21700|26650|14500)\\b/i.test(read?.text||'');
-            const looksLikeSpecs=/\\b\\d+(?:[.,]\\d+)?\\s*(?:v|в|mah|ah|wh|w)\\b/i.test(ocrTitle);
-            const reliableOcr=!!ocrTitle&&!looksLikeSpecs&&(/18650|21700|26650|14500|iphone|samsung|thinkpad/i.test(ocrTitle)||ocrTitle.split(/\\s+/).length>=3&&/[А-Яа-яЁё]/.test(ocrTitle));
-            if(hasCell)updates.title='Аккумулятор Li-ion '+(read!.text.match(/\\b(?:18650|21700|26650|14500)\\b/i)?.[0]||'18650');
+            const hasCell=/\b(?:18650|21700|26650|14500)\b/i.test(read?.text||'');
+            const looksLikeSpecs=/\b\d+(?:[.,]\d+)?\s*(?:v|в|mah|ah|wh|w)\b/i.test(ocrTitle);
+            const reliableOcr=!!ocrTitle&&!looksLikeSpecs&&(/18650|21700|26650|14500|iphone|samsung|thinkpad/i.test(ocrTitle)||ocrTitle.split(/\s+/).length>=3&&/[А-Яа-яЁё]/.test(ocrTitle));
+            if(hasCell)updates.title='Аккумулятор Li-ion '+(read!.text.match(/\b(?:18650|21700|26650|14500)\b/i)?.[0]||'18650');
             else if(reliableOcr)updates.title=ocrTitle;
             else if(seen?.title)updates.title=seen.title;
             // Do not put OCR fragments such as "2.7V BWW" into the title.
