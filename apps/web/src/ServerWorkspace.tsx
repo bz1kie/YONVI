@@ -146,7 +146,7 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
  async function save(e:React.FormEvent){
   e.preventDefault();
   const price=Number(draft.price);
-  if(!draft.title.trim()||!draft.description.trim()||!Number.isFinite(price)||price<0){notify('error','Укажите название, описание и корректную цену.');return;}
+  if(!draft.title.trim()||!Number.isFinite(price)||price<0){notify('error','Укажите название и корректную цену.');return;}
   if(!editId&&!chosenCircles.length){notify('error','Выберите хотя бы один круг.');return;}
   if(photoFiles.length>10){notify('error','Максимум 10 фотографий');return;}
   await action(async()=>{
@@ -310,7 +310,7 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
      <label>Цена, ₽<input required type="number" min={0} step=".01" value={draft.price} onChange={e=>field('price',e.target.value)}/></label>
      <label>Город<input required disabled={!!editId} value={draft.city} onChange={e=>field('city',e.target.value)}/></label>
      <label>Категория<select disabled={!!editId} value={draft.category} onChange={e=>field('category',e.target.value)}><option value="electronics">Электроника</option><option value="gaming">Игры</option><option value="fashion">Одежда</option><option value="home">Для дома</option><option value="transport">Транспорт</option><option value="hobby">Хобби</option><option value="auto">Авто</option></select></label>
-     <label className="sw-wide">Описание<textarea required maxLength={5000} rows={3} value={draft.description} onChange={e=>field('description',e.target.value)}/></label>
+     <label className="sw-wide">Описание (необязательно)<textarea maxLength={5000} rows={3} placeholder="Расскажите о товаре, комплектации и особенностях" value={draft.description} onChange={e=>field('description',e.target.value)}/></label>
     </div>
     <fieldset className="sw-attributes"><legend>Состояние и характеристики</legend>
      <label>Состояние<select value={draft.itemCondition} onChange={e=>field('itemCondition',e.target.value)}><option value="">Не указано</option><option value="new">Новое</option><option value="excellent">Отличное</option><option value="good">Хорошее</option><option value="used">Б/у</option><option value="repair">Требует ремонта</option></select></label>
