@@ -38,7 +38,7 @@ export default function MaxAuthBadge({onLogin}:{onLogin?:()=>void}){
    setStatus('error');setError(e instanceof Error?e.message:'Не удалось войти');
   }
  },[]);
- useEffect(()=>{void launch();},[launch]);
+ useEffect(()=>{void launch();const refresh=()=>{void fetch('/api/auth/me',{credentials:'same-origin',cache:'no-store'}).then(async r=>{if(r.ok){const data=await r.json();setUser(data.user);setStatus('signed-in');}else{setUser(null);setStatus('outside-max');}}).catch(()=>{});};window.addEventListener('yorvi:auth-change',refresh);return()=>window.removeEventListener('yorvi:auth-change',refresh);},[launch]);
  const logout=async()=>{
   try{
    await json(await fetch('/api/auth/logout',{method:'POST',credentials:'same-origin'}));

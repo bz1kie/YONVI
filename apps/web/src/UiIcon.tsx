@@ -1,0 +1,4 @@
+export default function UiIcon({name,size=22}:{name:'back'|'share'|'heart'|'close'|'left'|'right'|'photo';size?:number}){
+ const paths={back:<path d="m14 6-6 6 6 6M8 12h13"/>,share:<><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></>,heart:<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/>,close:<path d="m6 6 12 12M6 18 18 6"/>,left:<path d="m15 5-7 7 7 7"/>,right:<path d="m9 5 7 7-7 7"/>,photo:<><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 5-5 4 4 4-6 5 7"/></>};
+ return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
+}

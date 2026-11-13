@@ -1,3 +1,4 @@
+import {ConfirmBrowserLogin} from './BrowserLogin';
 import React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import './server-workspace.css';
@@ -247,6 +248,7 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
    <p>Сначала запустите <a href="https://max.ru/se14029050_1_bot" target="_blank" rel="noreferrer">Лаврика в MAX</a>. Текст переписки остаётся внутри Лавось.</p>
    {notificationMessage?<p role="status">{notificationMessage}</p>:null}
   </details>
+  {sessionUser?<ConfirmBrowserLogin/>:null}
   {managed.length?<details className="sw-panel"><summary>Канал MAX {communities.some(c=>c.max_channel_url)?'· подключён':''}</summary>
    {communities.filter(c=>c.max_channel_url).map(c=><p key={c.id}><a href={c.max_channel_url} target="_blank" rel="noreferrer">{c.max_channel_title||c.name} ↗</a></p>)}
    <p>Лаврик должен быть администратором канала. Подключение доступно владельцу канала.</p>

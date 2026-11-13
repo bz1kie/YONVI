@@ -74,6 +74,27 @@ try{
  const sessionRows=await pool.query('SELECT token_hash FROM user_sessions WHERE user_id=$1',[current.data.user.id]);
  assert.equal(sessionRows.rows.length,1);
  assert.notEqual(sessionRows.rows[0].token_hash,rawToken,'Raw cookie must never be persisted');
+ // Browser handoff: the public code cannot be used to claim the session.
+ assert.equal((await send('/api/auth/browser/start',{method:'POST'})).status,403);
+ const begin=await send('/api/auth/browser/start',{method:'POST',requestOrigin:origin});
+ assert.equal(begin.status,200);
+ const pairCookie=begin.headers.get('set-cookie').split(';')[0];
+ assert.match(begin.data.code,/^[A-F0-9]{12}$/);
+ assert.equal((await send('/api/auth/browser/confirm',{method:'POST',requestOrigin:origin,body:{code:begin.data.code}})).status,401);
+ assert.equal((await send('/api/auth/browser/poll',{method:'POST',requestOrigin:origin})).status,401);
+ assert.equal((await send('/api/auth/browser/poll',{method:'POST',requestOrigin:origin,cookie:pairCookie})).data.authenticated,false);
+ const approval=await send('/api/auth/browser/confirm',{method:'POST',requestOrigin:origin,cookie,body:{code:begin.data.code}});
+ assert.equal(approval.status,200);
+ assert.equal((await send('/api/auth/browser/confirm',{method:'POST',requestOrigin:origin,cookie,body:{code:begin.data.code}})).status,400);
+ const claimed=await send('/api/auth/browser/poll',{method:'POST',requestOrigin:origin,cookie:pairCookie});
+ assert.equal(claimed.data.authenticated,true);
+ const browserCookie=claimed.headers.getSetCookie().find(v=>v.startsWith('yorvi_session=')).split(';')[0];
+ assert.equal((await send('/api/auth/me',{cookie:browserCookie})).data.user.id,current.data.user.id);
+ assert.equal((await send('/api/auth/browser/poll',{method:'POST',requestOrigin:origin,cookie:pairCookie})).status,410);
+ await send('/api/auth/logout',{method:'POST',requestOrigin:origin,cookie:browserCookie});
+ const expired=await send('/api/auth/browser/start',{method:'POST',requestOrigin:origin});
+ await pool.query("UPDATE browser_login_requests SET expires_at=now()-interval '1 second'");
+ assert.equal((await send('/api/auth/browser/confirm',{method:'POST',requestOrigin:origin,cookie,body:{code:expired.data.code}})).status,400);
  const logout=await send('/api/auth/logout',{method:'POST',cookie,requestOrigin:origin});
  assert.equal(logout.status,200);
  assert.equal((await send('/api/auth/me',{cookie})).status,401,'Logout must revoke token at DB');

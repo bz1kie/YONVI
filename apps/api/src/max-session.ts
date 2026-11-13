@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Pool } from 'pg';
 import { createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';
+import { registerBrowserLogin } from './browser-login.js';
 import { verifyMaxInitData, InvalidMaxData, configuredMaxBotToken } from './max-auth.js';
 
 const COOKIE='yorvi_session';
@@ -46,6 +47,8 @@ export function registerMaxAuthentication(app:FastifyInstance,pool:Pool){
    if(!originMatches(req))return reply.code(403).send({error:'Invalid Origin'});
    return null;
  };
+
+ registerBrowserLogin(app,pool,{cookieOptions,originMatches});
 
  app.post('/api/auth/max',async (req,reply)=>{
    const denied=requireOrigin(req,reply);
