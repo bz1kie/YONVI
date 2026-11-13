@@ -38,7 +38,7 @@ const CAT = [
   {id:'gaming',name:'Игры',emoji:'🎮',bg:'lavender'},
   {id:'fashion',name:'Одежда',emoji:'👟',bg:'pink'},
   {id:'home',name:'Для дома',emoji:'🛋️',bg:'peach'},
-  {id:'transport',name:'Транспорт',emoji:'🚲',bg:'mint'},
+  {id:'transport',name:'Вело и мото',emoji:'🚲',bg:'mint'},
   {id:'hobby',name:'Хобби',emoji:'🎸',bg:'amber'},
   {id:'auto',name:'Авто',emoji:'🚘',bg:'sky'},
 ];

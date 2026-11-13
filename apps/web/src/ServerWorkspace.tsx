@@ -302,16 +302,17 @@ export default function ServerWorkspace({createRequest=0,view='listings'}:{creat
 
         }}/>
       <PhotoPreviews files={photoFiles}/>
+      {!photoFiles.length&&!editId?<small>Добавьте общий вид товара и крупные планы. Объявления с фотографиями проще оценить покупателю.</small>:null}
       {recognitionStatus&&<small role="status" className="sw-recognition-status">{recognitionBusy?'⌛ ':''}{recognitionStatus}</small>}
       {photoFiles.length>0&&<button type="button" className="btn btn-secondary" disabled={recognitionBusy} onClick={()=>{const file=photoFiles[0];if(!file)return;const input=document.getElementById('sw-create-photos') as HTMLInputElement|null;if(input){const transfer=new DataTransfer();photoFiles.forEach(f=>transfer.items.add(f));input.files=transfer.files;input.dispatchEvent(new Event('change',{bubbles:true}));}}}>Повторить поиск по первой фотографии</button>}
       {photoFiles.length?<div className="sw-photo-chips">{photoFiles.map((file,i)=><span key={file.name+'-'+i}>{i+1}. {file.name}</span>)}</div>:null}
       <small>Текст черновика сохраняется на этом устройстве. После перезапуска фотографии нужно выбрать заново.</small>
     </div>
     <div className="sw-fields">
-     <label>Название товара<input required minLength={3} maxLength={120} value={draft.title} onChange={e=>field('title',e.target.value)} placeholder="Например, ноутбук ThinkPad"/></label>
+     <label>Название товара<input required minLength={3} maxLength={120} value={draft.title} onChange={e=>field('title',e.target.value)} placeholder="Например, Lenovo ThinkPad T14, 16/512 ГБ"/></label>
      <label>Цена, ₽<input required type="number" min={0} step=".01" value={draft.price} onChange={e=>field('price',e.target.value)}/></label>
      <label>Город<input required disabled={!!editId} value={draft.city} onChange={e=>field('city',e.target.value)}/></label>
-     <label>Категория<select disabled={!!editId} value={draft.category} onChange={e=>field('category',e.target.value)}><option value="electronics">Электроника</option><option value="gaming">Игры</option><option value="fashion">Одежда</option><option value="home">Для дома</option><option value="transport">Транспорт</option><option value="hobby">Хобби</option><option value="auto">Авто</option></select></label>
+     <label>Категория<select disabled={!!editId} value={draft.category} onChange={e=>field('category',e.target.value)}><option value="electronics">Электроника</option><option value="gaming">Игры</option><option value="fashion">Одежда</option><option value="home">Для дома</option><option value="transport">Вело и мото</option><option value="hobby">Хобби</option><option value="auto">Авто</option></select></label>
      <label className="sw-wide">Описание (необязательно)<textarea maxLength={5000} rows={3} placeholder="Расскажите о товаре, комплектации и особенностях" value={draft.description} onChange={e=>field('description',e.target.value)}/></label>
     </div>
     <fieldset className="sw-attributes"><legend>Состояние и характеристики</legend>
